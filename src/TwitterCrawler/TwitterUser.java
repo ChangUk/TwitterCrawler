@@ -15,7 +15,7 @@ public class TwitterUser {
 	}
 	
 	public User getUserInfo() {
-		String endpoint = "/followers/ids";
+		String endpoint = "/users/show/:id";
 		TwitterApp app = null;
 		try {
 			app = AppManager.getSingleton().getAvailableApp(endpoint);
@@ -29,8 +29,21 @@ public class TwitterUser {
 				// Retry
 				return getUserInfo();
 			} else {
-				te.printStackTrace();
-				return null;
+				try {
+					switch (te.getStatusCode()) {
+					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
+					case 503:	// The Twitter servers are up, but overloaded with requests.
+					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
+						te.printStackTrace();
+						Thread.sleep(5000);
+						return getUserInfo();
+					default:
+						te.printStackTrace();
+						return null;
+					}
+				} catch (InterruptedException ie) {
+					return null;
+				}
 			}
 		}
 	}

@@ -29,7 +29,7 @@ public class Engine {
 	private Utils utils = new Utils();
 	private String msgLog = new String();
 	
-	public Engine(EgoNetwork network, ExecutorService exeService) {
+	public Engine(EgoNetwork network, int level, ExecutorService exeService) {
 		mAppManager = AppManager.getSingleton();
 		
 		this.network = network;
@@ -37,7 +37,7 @@ public class Engine {
 		User egoUser = network.getEgoUser().getUserInfo();
 		this.language = egoUser.getLang();
 		
-		this.outputPath = "../TwitterCrawlingData/" + network.getEgoUser().id;
+		this.outputPath = "../Data/TwitterData/" + network.getEgoUser().id + "_" + level;
 		new File(outputPath + "/friends/").mkdirs();
 		new File(outputPath + "/tweets/").mkdirs();
 		new File(outputPath + "/sharings/").mkdirs();
@@ -89,13 +89,19 @@ public class Engine {
 			} else {
 				try {
 					switch (te.getStatusCode()) {
-					case 401:		// Authentication credentials were missing or incorrect.
+					case 401:	// Authentication credentials were missing or incorrect.
 						network.getAuthInvalidList().add(userID);
-					case 503:		// The Twitter servers are up, but overloaded with requests.
-						Thread.sleep(5000);
+						break;
+					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
+					case 503:	// The Twitter servers are up, but overloaded with requests.
+					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
+						te.printStackTrace();
+						Thread.sleep(10000);
 						followings = getFollowingsIDs(userID, maxCount);
+						break;
 					default:
 						te.printStackTrace();
+						break;
 					}
 				} catch (InterruptedException ie) {
 				}
@@ -144,13 +150,19 @@ public class Engine {
 			} else {
 				try {
 					switch (te.getStatusCode()) {
-					case 401:		// Authentication credentials were missing or incorrect.
+					case 401:	// Authentication credentials were missing or incorrect.
 						network.getAuthInvalidList().add(userID);
-					case 503:		// The Twitter servers are up, but overloaded with requests.
+						break;
+					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
+					case 503:	// The Twitter servers are up, but overloaded with requests.
+					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
+						te.printStackTrace();
 						Thread.sleep(5000);
 						followers = getFollowersIDs(userID, maxCount);
+						break;
 					default:
 						te.printStackTrace();
+						break;
 					}
 				} catch (InterruptedException ie) {
 				}
@@ -233,11 +245,15 @@ public class Engine {
 				} else {
 					try {
 						switch (te.getStatusCode()) {
-						case 503:		// The Twitter servers are up, but overloaded with requests.
+						case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
+						case 503:	// The Twitter servers are up, but overloaded with requests.
+						case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
+							te.printStackTrace();
 							Thread.sleep(5000);
 							return filterOutlierUsers(candidatesIDs);
 						default:
 							te.printStackTrace();
+							break;
 						}
 					} catch (InterruptedException ie) {
 					}
@@ -295,10 +311,13 @@ public class Engine {
 			} else {
 				try {
 					switch (te.getStatusCode()) {
-					case 401:		// Authentication credentials were missing or incorrect.
+					case 401:	// Authentication credentials were missing or incorrect.
 						network.getAuthInvalidList().add(userID);
 						return;
-					case 503:		// The Twitter servers are up, but overloaded with requests.
+					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
+					case 503:	// The Twitter servers are up, but overloaded with requests.
+					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
+						te.printStackTrace();
 						Thread.sleep(5000);
 						loadTimeline(userID);
 						return;
@@ -319,7 +338,7 @@ public class Engine {
 			for (int i = 0; i < urlEntities.length; i++) {
 				String expandedURL = urlEntities[i].getExpandedURL();
 				if (expandedURL.startsWith("https://twitter.com/")) {
-					String tokens[] = expandedURL.split("/");
+					String tokens[] = expandedURL.split("\\?")[0].split("\\&")[0].split("/");
 					if (tokens.length != 6)
 						continue;
 					Long targetTweetID = Long.valueOf(tokens[5]);
@@ -395,10 +414,13 @@ public class Engine {
 			} else {
 				try {
 					switch (te.getStatusCode()) {
-					case 401:		// Authentication credentials were missing or incorrect.
+					case 401:	// Authentication credentials were missing or incorrect.
 						network.getAuthInvalidList().add(userID);
 						return;
-					case 503:		// The Twitter servers are up, but overloaded with requests.
+					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
+					case 503:	// The Twitter servers are up, but overloaded with requests.
+					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
+						te.printStackTrace();
 						Thread.sleep(5000);
 						loadFavorites(userID);
 						return;

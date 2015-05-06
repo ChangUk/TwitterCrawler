@@ -11,43 +11,59 @@ import Util.Utils;
 
 public class Crawler {
 	private Engine engine = null;
+	private EgoNetwork network = null;
+	private final int level;
 	private ExecutorService exeService = null;
 	private Queue<TwitterUser> queue;
 	
-	public Crawler(EgoNetwork network) {
+	public Crawler(EgoNetwork network, int level) {
 		this.exeService = Executors.newCachedThreadPool();
-		this.engine = new Engine(network, exeService);
+		this.engine = new Engine(network, level, exeService);
+		this.network = network;
+		this.level = level;
 		this.queue = new LinkedList<TwitterUser>();
 		
 		TwitterUser egoUser = network.getEgoUser();
+		network.getNodeMap().put(egoUser.id, egoUser);
 		queue.offer(egoUser);
 	}
 	
-	public void run(EgoNetwork network) {
+	public void run() {
+		if (level < 0) return;
+		
 		engine.printLog("TWITTER CRAWLING STARTED: " + network.getEgoUser().id, false);
 		long crawling_start = System.currentTimeMillis();
 		
-		// Get ego-user and find his friends list
-		TwitterUser egoUser = network.getEgoUser();
-		egoUser.friends = engine.getFriends(egoUser.id);
-		network.getNodeMap().put(egoUser.id, egoUser);
+		// Set visiting limit for exploring with BFS until at the given level
+		int[] visitingLimit = new int[level + 1];
+		visitingLimit[0] = 1;
+		for (int i = 1; i <= level; i++)
+			visitingLimit[i] = 0;
+		int cursor = 0;
 		
-		// Get 1-level friends of ego-user and their friends list
-		for (long friendID : egoUser.friends) {
-			TwitterUser friend = new TwitterUser(friendID);
-			friend.friends = engine.getFriends(friendID);
-			network.getNodeMap().put(friendID, friend);
-		}
-		
-		// Get 2-level friends of ego-user and their friends list
-		// This logic is necessary to find unexplored edges among 2-level nodes
-		for (long friendID : egoUser.friends) {
-			for (long friendOfFriendID : network.getNodeMap().get(friendID).friends) {
-				if (network.getNodeMap().containsKey(friendOfFriendID))
-					continue;
-				TwitterUser friendOfFriend = new TwitterUser(friendOfFriendID);
-				friendOfFriend.friends = engine.getFriends(friendOfFriendID);
-				network.getNodeMap().put(friendOfFriendID, friendOfFriend);
+		// Scan Twitter ego-network at the given level by using Breath First Search (BFS)
+		while (queue.isEmpty() == false) {
+			TwitterUser user = queue.poll();
+			visitingLimit[cursor] -= 1;
+			user.friends = engine.getFriends(user.id);
+			
+			if (cursor < level) {
+				int newNodeCount = 0;
+				for (long friendID : user.friends) {
+					if (network.getNodeMap().containsKey(friendID))
+						continue;
+					TwitterUser friend = new TwitterUser(friendID);
+					network.getNodeMap().put(friend.id, friend);
+					queue.offer(friend);
+					newNodeCount += 1;
+				}
+				visitingLimit[cursor + 1] += newNodeCount;
+			}
+			
+			if (visitingLimit[cursor] == 0) {
+				cursor += 1;
+				if (cursor > level)
+					break;
 			}
 		}
 		

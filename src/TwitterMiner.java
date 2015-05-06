@@ -10,8 +10,8 @@ public class TwitterMiner {
 //		networks.put("Jiwon",		new EgoNetwork(78199077));
 		
 		for (EgoNetwork network : networks.values()) {
-			Crawler crawler = new Crawler(network);
-			crawler.run(network);
+			Crawler crawler = new Crawler(network, 2);
+			crawler.run();
 		}
 		
 		System.out.println("Finished");
