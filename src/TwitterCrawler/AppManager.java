@@ -2,7 +2,6 @@ package TwitterCrawler;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -33,10 +32,9 @@ public class AppManager {
 	}
 	
 	public boolean loadTwitterApps() {
-		File file = new File("../TwitterApp.dat");
 		try {
+			File file = new File("../TwitterApp.dat");
 			FileReader fr = new FileReader(file);
-			FileInputStream fis = new FileInputStream(new File("../TwitterApp.dat"));
 			BufferedReader br = new BufferedReader(fr);
 			
 			String oneLine;
@@ -49,7 +47,6 @@ public class AppManager {
 				idx++;
 			}
 			
-			fis.close();
 			br.close();
 		} catch (FileNotFoundException fnfe) {
 			fnfe.printStackTrace();
