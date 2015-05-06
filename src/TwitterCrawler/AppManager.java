@@ -106,7 +106,7 @@ public class AppManager {
 			mAppQueue.next();
 			
 			if (limitedEndpoints.containsKey(endpoint) == false || limitedEndpoints.get(endpoint).contains(app) == false) {
-				logger.info("\tApp(" + app.name + " - '" + endpoint + "')");
+//				logger.info("\tApp(" + app.name + " - '" + endpoint + "')");
 				return app;
 			}
 			

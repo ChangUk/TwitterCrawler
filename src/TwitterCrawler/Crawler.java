@@ -42,10 +42,15 @@ public class Crawler {
 		int cursor = 0;
 		
 		// Scan Twitter ego-network at the given level by using Breath First Search (BFS)
+		int cnt = 0;
 		while (queue.isEmpty() == false) {
 			TwitterUser user = queue.poll();
 			visitingLimit[cursor] -= 1;
 			user.friends = engine.getFriends(user.id);
+			
+			cnt += 1;
+			if (cnt % 500 == 0)
+				System.out.println("Process: " + cnt / 500);
 			
 			if (cursor < level) {
 				int newNodeCount = 0;

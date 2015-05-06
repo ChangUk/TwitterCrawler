@@ -34,7 +34,11 @@ public class Engine {
 		
 		this.network = network;
 		this.exeService = exeService;
-		User egoUser = network.getEgoUser().getUserInfo();
+		User egoUser = getUser(network.getEgoUser().id);
+		if (egoUser == null) {
+			System.out.println("Ego-user is invalid user.");
+			System.exit(0);
+		}
 		this.language = egoUser.getLang();
 		
 		this.outputPath = "../Data/TwitterData/" + network.getEgoUser().id + "_" + level;
@@ -93,10 +97,12 @@ public class Engine {
 						network.getAuthInvalidList().add(userID);
 						break;
 					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
+						System.out.println("Error 404 on getting followings: " + userID);
+						break;
 					case 503:	// The Twitter servers are up, but overloaded with requests.
 					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
 						te.printStackTrace();
-						Thread.sleep(10000);
+						Thread.sleep(5000);
 						followings = getFollowingsIDs(userID, maxCount);
 						break;
 					default:
@@ -154,6 +160,8 @@ public class Engine {
 						network.getAuthInvalidList().add(userID);
 						break;
 					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
+						System.out.println("Error 404 on getting followers: " + userID);
+						break;
 					case 503:	// The Twitter servers are up, but overloaded with requests.
 					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
 						te.printStackTrace();
@@ -174,6 +182,7 @@ public class Engine {
 	/**
 	 * Get friends list of a given user comparing followings list and followers list.
 	 * To judge friendship between users, they should mutually follow each other.
+	 * The <b>reason why finding friendship should be preceded</b> is to reduce API calling frequency.
 	 * @param userID ID number of a user
 	 * @return friends' IDs list
 	 */
@@ -246,6 +255,14 @@ public class Engine {
 					try {
 						switch (te.getStatusCode()) {
 						case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
+							for (long id : buffer) {
+								User user = getUser(id);
+								if (user != null) {
+									friends.add(user.getId());
+									screenNameMap.put(user.getScreenName(), user.getId());
+								}
+							}
+							break;
 						case 503:	// The Twitter servers are up, but overloaded with requests.
 						case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
 							te.printStackTrace();
@@ -261,6 +278,53 @@ public class Engine {
 			}
 		} while (index < nCandidates);
 		return friends;
+	}
+	
+	/**
+	 * Get User object from user ID.
+	 * @param userID
+	 * @return User object of a given user ID
+	 */
+	public User getUser(long userID) {
+		String endpoint = "/users/show/:id";
+		TwitterApp app = null;
+		try {
+			app = mAppManager.getAvailableApp(endpoint);
+			User user = app.twitter.showUser(userID);
+			
+			// Filtering criteria
+			if (user.getFriendsCount() > 5000 || user.getFollowersCount() > 5000 || !user.getLang().equals(language))
+				return null;
+			
+			return user;
+		} catch (TwitterException te) {
+			if (te.exceededRateLimitation()) {
+				// Register current application as limited one
+				mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
+				app.printRateLimitStatus(endpoint);
+				
+				// Retry
+				return getUser(userID);
+			} else {
+				try {
+					switch (te.getStatusCode()) {
+					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
+						System.out.println("Error 404 on filtering outlier user: " + userID);
+						return null;
+					case 503:	// The Twitter servers are up, but overloaded with requests.
+					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
+						te.printStackTrace();
+						Thread.sleep(5000);
+						return getUser(userID);
+					default:
+						te.printStackTrace();
+						return null;
+					}
+				} catch (InterruptedException ie) {
+					return null;
+				}
+			}
+		}
 	}
 	
 	/**
@@ -315,6 +379,8 @@ public class Engine {
 						network.getAuthInvalidList().add(userID);
 						return;
 					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
+						System.out.println("Error 404 on getting timelines: " + userID);
+						return;
 					case 503:	// The Twitter servers are up, but overloaded with requests.
 					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
 						te.printStackTrace();
@@ -418,6 +484,8 @@ public class Engine {
 						network.getAuthInvalidList().add(userID);
 						return;
 					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
+						System.out.println("Error 404 on getting favorites: " + userID);
+						return;
 					case 503:	// The Twitter servers are up, but overloaded with requests.
 					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
 						te.printStackTrace();
