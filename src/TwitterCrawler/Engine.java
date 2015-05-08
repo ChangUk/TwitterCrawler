@@ -98,6 +98,7 @@ public class Engine {
 						break;
 					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
 						System.out.println("Error 404 on getting followings: " + userID);
+						network.getAuthInvalidList().add(userID);
 						break;
 					case 503:	// The Twitter servers are up, but overloaded with requests.
 					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
@@ -161,6 +162,7 @@ public class Engine {
 						break;
 					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
 						System.out.println("Error 404 on getting followers: " + userID);
+						network.getAuthInvalidList().add(userID);
 						break;
 					case 503:	// The Twitter servers are up, but overloaded with requests.
 					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
@@ -214,22 +216,20 @@ public class Engine {
 		if (candidatesIDs.isEmpty())
 			return friends;
 		
-		int index = 0;
-		int nCandidates = candidatesIDs.size();
+		int cursor = 0;
 		long[] buffer = null;
-		do {
-			int remaining = nCandidates - index;
+		while (cursor < candidatesIDs.size()) {
+			// Make buffer space
+			int remaining = candidatesIDs.size() - cursor;
 			if (remaining >= 100)
 				buffer = new long[100];
 			else if (remaining > 0)
 				buffer = new long[remaining];
-			else if (remaining <= 0)
-				break;
 			
-			// Make buffer
+			// Fill buffer with IDs
 			for (int i = 0; i < buffer.length; i++) {
-				buffer[i] = candidatesIDs.get(index);
-				index++;
+				buffer[i] = candidatesIDs.get(cursor);
+				cursor++;
 			}
 			
 			try {
@@ -258,6 +258,10 @@ public class Engine {
 							for (long id : buffer) {
 								User user = getUser(id);
 								if (user != null) {
+									// Filtering criteria
+									if (user.getFriendsCount() > 5000 || user.getFollowersCount() > 5000 || !user.getLang().equals(language))
+										continue;
+									
 									friends.add(user.getId());
 									screenNameMap.put(user.getScreenName(), user.getId());
 								}
@@ -276,7 +280,7 @@ public class Engine {
 					}
 				}
 			}
-		} while (index < nCandidates);
+		}
 		return friends;
 	}
 	
@@ -291,11 +295,6 @@ public class Engine {
 		try {
 			app = mAppManager.getAvailableApp(endpoint);
 			User user = app.twitter.showUser(userID);
-			
-			// Filtering criteria
-			if (user.getFriendsCount() > 5000 || user.getFollowersCount() > 5000 || !user.getLang().equals(language))
-				return null;
-			
 			return user;
 		} catch (TwitterException te) {
 			if (te.exceededRateLimitation()) {
@@ -309,7 +308,8 @@ public class Engine {
 				try {
 					switch (te.getStatusCode()) {
 					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
-						System.out.println("Error 404 on filtering outlier user: " + userID);
+						System.out.println("Error 404 on getting user: " + userID);
+						network.getAuthInvalidList().add(userID);
 						return null;
 					case 503:	// The Twitter servers are up, but overloaded with requests.
 					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
@@ -347,9 +347,6 @@ public class Engine {
 	public void loadTimeline(long userID) {
 		String endpoint = "/statuses/user_timeline";
 		ArrayList<Status> tweets = new ArrayList<Status>();
-		HashMap<Long, Long> sharings = new HashMap<Long, Long>();
-		ArrayList<Status> retweets = new ArrayList<Status>();
-		HashMap<Long, Integer> mentions = new HashMap<Long, Integer>();
 		
 		// Get all tweets of a given user. A set of tweet messages includes user's sharings, mentions, and retweets.
 		TwitterApp app = null;
@@ -380,6 +377,7 @@ public class Engine {
 						return;
 					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
 						System.out.println("Error 404 on getting timelines: " + userID);
+						network.getAuthInvalidList().add(userID);
 						return;
 					case 503:	// The Twitter servers are up, but overloaded with requests.
 					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
@@ -397,48 +395,63 @@ public class Engine {
 			}
 		}
 		
-		// The followings are regarding crawling sharings, retweets, and mentions from timeline data.
-		for (Status tweet : tweets) {
-			// Sharing tweets
-			URLEntity[] urlEntities = tweet.getURLEntities();
-			for (int i = 0; i < urlEntities.length; i++) {
-				String expandedURL = urlEntities[i].getExpandedURL();
-				if (expandedURL.startsWith("https://twitter.com/")) {
-					String tokens[] = expandedURL.split("\\?")[0].split("\\&")[0].split("/");
-					if (tokens.length != 6)
-						continue;
-					Long targetTweetID = Long.valueOf(tokens[5]);
-					Long targetUserID = screenNameMap.get(tokens[3]);
-					if (targetUserID != null && userID != targetUserID && network.getNodeMap().containsKey(targetUserID))
-						sharings.put(targetTweetID, targetUserID);
-				}
-			}
-			
-			// Retweets
-			if (tweet.isRetweet() == true) {
-				Long authorID = tweet.getRetweetedStatus().getUser().getId();
-				if (userID != authorID && network.getNodeMap().containsKey(authorID))
-					retweets.add(tweet);
-			}
-			
-			// Mentions
-			UserMentionEntity[] mentionEntities = tweet.getUserMentionEntities();
-			for (int i = 0; i < mentionEntities.length; i++) {
-				Long mentionedUserID = mentionEntities[i].getId();
-				if (userID != mentionedUserID && network.getNodeMap().containsKey(mentionedUserID)) {
-					Integer cnt = mentions.get(mentionedUserID);
-					if (cnt == null)
-						cnt = 0;
-					cnt++;
-					mentions.put(mentionEntities[i].getId(), cnt);
-				}
-			}
-		}
-		
+		// Extract sharings, retweets, and mentions from timeline data.
 		Thread thread = new Thread() {
 			@Override
 			public void run() {
 				super.run();
+				HashMap<Long, Long> sharings = new HashMap<Long, Long>();
+				ArrayList<Status> retweets = new ArrayList<Status>();
+				HashMap<Long, Integer> mentions = new HashMap<Long, Integer>();
+				
+				for (Status tweet : tweets) {
+					// Sharing tweets
+					URLEntity[] urlEntities = tweet.getURLEntities();
+					for (int i = 0; i < urlEntities.length; i++) {
+						String expandedURL = urlEntities[i].getExpandedURL();
+						if (expandedURL.startsWith("https://twitter.com/")) {
+							String tokens[] = expandedURL.split("/");
+							if (tokens.length < 6 && tokens[4].equals("status") == false)
+								continue;
+							
+							Long targetUserID = screenNameMap.get(tokens[3]);
+							Long targetTweetID = null;
+							for (int c = 1; c <= tokens[5].length(); c++) {
+								try {
+									targetTweetID = Long.parseLong(tokens[5].substring(0, c));
+								} catch (Exception e) {
+									targetTweetID = Long.parseLong(tokens[5].substring(0, c - 1));
+									break;
+								}
+							}
+							
+							if (targetUserID != null && targetTweetID != null
+									&& userID != targetUserID && network.getNodeMap().containsKey(targetUserID))
+								sharings.put(targetTweetID, targetUserID);
+						}
+					}
+					
+					// Retweets
+					if (tweet.isRetweet() == true) {
+						Long authorID = tweet.getRetweetedStatus().getUser().getId();
+						if (userID != authorID && network.getNodeMap().containsKey(authorID))
+							retweets.add(tweet);
+					}
+					
+					// Mentions
+					UserMentionEntity[] mentionEntities = tweet.getUserMentionEntities();
+					for (int i = 0; i < mentionEntities.length; i++) {
+						Long mentionedUserID = mentionEntities[i].getId();
+						if (userID != mentionedUserID && network.getNodeMap().containsKey(mentionedUserID)) {
+							Integer cnt = mentions.get(mentionedUserID);
+							if (cnt == null)
+								cnt = 0;
+							cnt++;
+							mentions.put(mentionEntities[i].getId(), cnt);
+						}
+					}
+				}
+				
 				utils.writeTweets(outputPath + "/tweets/", userID, tweets);
 				utils.writeSharingIDs(outputPath + "/sharings/", userID, sharings);
 				utils.writeRetweetIDs(outputPath + "/reweets/", userID, retweets);
@@ -485,6 +498,7 @@ public class Engine {
 						return;
 					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
 						System.out.println("Error 404 on getting favorites: " + userID);
+						network.getAuthInvalidList().add(userID);
 						return;
 					case 503:	// The Twitter servers are up, but overloaded with requests.
 					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
