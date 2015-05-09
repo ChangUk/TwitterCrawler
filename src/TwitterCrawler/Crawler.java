@@ -12,15 +12,13 @@ import Util.Utils;
 public class Crawler {
 	private Engine engine = null;
 	private EgoNetwork network = null;
-	private final int level;
 	private ExecutorService exeService = null;
 	private Queue<TwitterUser> queue;
 	
-	public Crawler(EgoNetwork network, int level) {
+	public Crawler(EgoNetwork network) {
 		this.exeService = Executors.newCachedThreadPool();
-		this.engine = new Engine(network, level, exeService);
+		this.engine = new Engine(network, exeService);
 		this.network = network;
-		this.level = level;
 		this.queue = new LinkedList<TwitterUser>();
 		
 		TwitterUser egoUser = network.getEgoUser();
@@ -29,20 +27,20 @@ public class Crawler {
 	}
 	
 	public void run() {
-		if (level < 0) return;
+		if (network.level() < 0) return;
 		
 		engine.printLog("TWITTER CRAWLING STARTED: " + network.getEgoUser().id, false);
 		long crawling_start = System.currentTimeMillis();
 		
 		// Set visiting limit for exploring with BFS until at the given level
-		int[] visitingLimit = new int[level + 1];
+		int[] visitingLimit = new int[network.level() + 1];
 		visitingLimit[0] = 1;
-		for (int i = 1; i <= level; i++)
+		for (int i = 1; i <= network.level(); i++)
 			visitingLimit[i] = 0;
 		int cursor = 0;
+		int cnt = 0;
 		
 		// Scan Twitter ego-network at the given level by using Breath First Search (BFS)
-		int cnt = 0;
 		while (queue.isEmpty() == false) {
 			TwitterUser user = queue.poll();
 			visitingLimit[cursor] -= 1;
@@ -52,7 +50,7 @@ public class Crawler {
 			if (cnt % 500 == 0)
 				System.out.println("Process: " + cnt / 500);
 			
-			if (cursor < level) {
+			if (cursor < network.level()) {
 				int newNodeCount = 0;
 				for (long friendID : user.friends) {
 					if (network.getNodeMap().containsKey(friendID))
@@ -67,7 +65,7 @@ public class Crawler {
 			
 			if (visitingLimit[cursor] == 0) {
 				cursor += 1;
-				if (cursor > level)
+				if (cursor > network.level())
 					break;
 			}
 		}
@@ -111,6 +109,7 @@ public class Crawler {
 		engine.printLog(new Utils().printExecutingTime(
 				"Total executing time", (System.currentTimeMillis() - crawling_start) / 1000L), true);
 		
+		// Wait for other friends
 		try {
 			exeService.shutdown();
 			exeService.awaitTermination(600, TimeUnit.SECONDS);

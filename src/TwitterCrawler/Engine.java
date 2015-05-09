@@ -29,7 +29,7 @@ public class Engine {
 	private Utils utils = new Utils();
 	private String msgLog = new String();
 	
-	public Engine(EgoNetwork network, int level, ExecutorService exeService) {
+	public Engine(EgoNetwork network, ExecutorService exeService) {
 		mAppManager = AppManager.getSingleton();
 		
 		this.network = network;
@@ -41,7 +41,7 @@ public class Engine {
 		}
 		this.language = egoUser.getLang();
 		
-		this.outputPath = "../Data/TwitterData/" + network.getEgoUser().id + "_" + level;
+		this.outputPath = "../Data/TwitterData/" + network.getEgoUser().id + "_" + network.level();
 		new File(outputPath + "/friends/").mkdirs();
 		new File(outputPath + "/tweets/").mkdirs();
 		new File(outputPath + "/sharings/").mkdirs();
@@ -223,7 +223,7 @@ public class Engine {
 			int remaining = candidatesIDs.size() - cursor;
 			if (remaining >= 100)
 				buffer = new long[100];
-			else if (remaining > 0)
+			else
 				buffer = new long[remaining];
 			
 			// Fill buffer with IDs
