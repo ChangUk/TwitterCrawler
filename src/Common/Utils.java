@@ -1,4 +1,4 @@
-package Util;
+package Common;
 
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 
 import twitter4j.Status;
-import TwitterCrawler.EgoNetwork;
 import TwitterCrawler.TwitterUser;
 
 public class Utils {

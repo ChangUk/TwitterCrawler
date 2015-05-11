@@ -7,18 +7,20 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import Util.Utils;
+import Common.EgoNetwork;
+import Common.Utils;
 
 public class Crawler {
 	private Engine engine = null;
-	private EgoNetwork network = null;
+	private EgoNetwork egoNetwork = null;
+	
 	private ExecutorService exeService = null;
 	private Queue<TwitterUser> queue;
 	
 	public Crawler(EgoNetwork network) {
 		this.exeService = Executors.newCachedThreadPool();
 		this.engine = new Engine(network, exeService);
-		this.network = network;
+		this.egoNetwork = network;
 		this.queue = new LinkedList<TwitterUser>();
 		
 		TwitterUser egoUser = network.getEgoUser();
@@ -27,15 +29,15 @@ public class Crawler {
 	}
 	
 	public void run() {
-		if (network.level() < 0) return;
+		if (egoNetwork.level() < 0) return;
 		
-		engine.printLog("TWITTER CRAWLING STARTED: " + network.getEgoUser().id, false);
+		engine.printLog("TWITTER CRAWLING STARTED: " + egoNetwork.getEgoUser().id, false);
 		long crawling_start = System.currentTimeMillis();
 		
 		// Set visiting limit for exploring with BFS until at the given level
-		int[] visitingLimit = new int[network.level() + 1];
+		int[] visitingLimit = new int[egoNetwork.level() + 1];
 		visitingLimit[0] = 1;
-		for (int i = 1; i <= network.level(); i++)
+		for (int i = 1; i <= egoNetwork.level(); i++)
 			visitingLimit[i] = 0;
 		int cursor = 0;
 		int cnt = 0;
@@ -48,15 +50,15 @@ public class Crawler {
 			
 			cnt += 1;
 			if (cnt % 500 == 0)
-				System.out.println("Process: " + cnt / 500);
+				System.out.println("Crawling process: " + cnt / 500);
 			
-			if (cursor < network.level()) {
+			if (cursor < egoNetwork.level()) {
 				int newNodeCount = 0;
 				for (long friendID : user.friends) {
-					if (network.getNodeMap().containsKey(friendID))
+					if (egoNetwork.getNodeMap().containsKey(friendID))
 						continue;
 					TwitterUser friend = new TwitterUser(friendID);
-					network.getNodeMap().put(friend.id, friend);
+					egoNetwork.getNodeMap().put(friend.id, friend);
 					queue.offer(friend);
 					newNodeCount += 1;
 				}
@@ -65,20 +67,20 @@ public class Crawler {
 			
 			if (visitingLimit[cursor] == 0) {
 				cursor += 1;
-				if (cursor > network.level())
+				if (cursor > egoNetwork.level())
 					break;
 			}
 		}
 		
 		// Filter invalid user IDs
-		for (long invalidID : network.getAuthInvalidList())
-			network.getNodeMap().remove(invalidID);
-		for (TwitterUser user : network.getNodeMap().values()) {
+		for (long invalidID : egoNetwork.getAuthInvalidList())
+			egoNetwork.getNodeMap().remove(invalidID);
+		for (TwitterUser user : egoNetwork.getNodeMap().values()) {
 			ArrayList<Long> filteredList = new ArrayList<Long>();
 			for (long friendsID : user.friends) {
-				if (network.getNodeMap().containsKey(friendsID)) {
+				if (egoNetwork.getNodeMap().containsKey(friendsID)) {
 					filteredList.add(friendsID);
-					network.nDirectedEdges += 1;
+					egoNetwork.nDirectedEdges += 1;
 				}
 			}
 			user.friends = filteredList;
@@ -87,25 +89,30 @@ public class Crawler {
 		// Write friendship information into files
 		engine.writeFriendsList();
 		
-		engine.printLog("### Complete: construct network(" + network.getEgoUser().id + ")"
-				+ " - Node(" + network.getNodeMap().size() + "), Edge(" + network.nDirectedEdges / 2
-				+ "), Excluded Invalid Node(" + network.getAuthInvalidList().size() + ")", false);
+		engine.printLog("### Complete: construct network(" + egoNetwork.getEgoUser().id + ")"
+				+ " - Node(" + egoNetwork.getNodeMap().size() + "), Edge(" + egoNetwork.nDirectedEdges / 2
+				+ "), Excluded Invalid Node(" + egoNetwork.getAuthInvalidList().size() + ")", false);
 		engine.printLog(new Utils().printExecutingTime(
-				"Network constructing time", (System.currentTimeMillis() - crawling_start) / 1000L), false);
+				"Network construction time", (System.currentTimeMillis() - crawling_start) / 1000L), false);
 		long crawling_start2 = System.currentTimeMillis();
 		
 		// Get timelines of users of a given network
-		for (long userID : network.getNodeMap().keySet()) {
+		cnt = 0;
+		for (long userID : egoNetwork.getNodeMap().keySet()) {
 			engine.loadTimeline(userID);
 			engine.loadFavorites(userID);
+			
+			cnt += 1;
+			if (cnt % 500 == 0)
+				System.out.println("Timeline process: " + cnt / 500);
 		}
 		
 		engine.printLog("### Complete: load timelines from Twitter server. "
-				+ "- Excluded Invalid Node(" + network.getAuthInvalidList().size() + ")", false);
+				+ "- Excluded Invalid Node(" + egoNetwork.getAuthInvalidList().size() + ")", false);
 		engine.printLog(new Utils().printExecutingTime(
 				"Timeline crawling time", (System.currentTimeMillis() - crawling_start2) / 1000L), false);
 		
-		engine.printLog("TWITTER CRAWLING FINISHED: " + network.getEgoUser().id, false);
+		engine.printLog("TWITTER CRAWLING FINISHED: " + egoNetwork.getEgoUser().id, false);
 		engine.printLog(new Utils().printExecutingTime(
 				"Total executing time", (System.currentTimeMillis() - crawling_start) / 1000L), true);
 		

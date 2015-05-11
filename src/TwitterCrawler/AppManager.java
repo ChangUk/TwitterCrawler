@@ -9,7 +9,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Logger;
 
-import Util.CircularQueue;
+import Common.CircularQueue;
+import Common.Settings;
 
 public class AppManager {
 	private static AppManager mInstance = null;
@@ -33,7 +34,7 @@ public class AppManager {
 	
 	public boolean loadTwitterApps() {
 		try {
-			File file = new File("../TwitterApp.dat");
+			File file = new File(Settings.PATH_APPS_INFO);
 			FileReader fr = new FileReader(file);
 			BufferedReader br = new BufferedReader(fr);
 			

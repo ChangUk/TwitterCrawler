@@ -16,7 +16,9 @@ import twitter4j.TwitterException;
 import twitter4j.URLEntity;
 import twitter4j.User;
 import twitter4j.UserMentionEntity;
-import Util.Utils;
+import Common.EgoNetwork;
+import Common.Settings;
+import Common.Utils;
 
 public class Engine {
 	private EgoNetwork network = null;
@@ -41,7 +43,7 @@ public class Engine {
 		}
 		this.language = egoUser.getLang();
 		
-		this.outputPath = "../Data/TwitterData/" + network.getEgoUser().id + "_" + network.level();
+		this.outputPath = Settings.PATH_SAVE + network.getEgoUser().id + "_" + network.level();
 		new File(outputPath + "/friends/").mkdirs();
 		new File(outputPath + "/tweets/").mkdirs();
 		new File(outputPath + "/sharings/").mkdirs();
