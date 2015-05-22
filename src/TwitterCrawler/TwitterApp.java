@@ -13,21 +13,11 @@ public class TwitterApp {
 	// The name of this TwitterApp
 	public final String name;
 	
-	// Application authentication information
-	public final String API_KEY;			// Consumers key
-	public final String API_SECRET;			// Consumers secret
-	public final String ACCESS_KEY;
-	public final String ACCESS_SECRET;
-	
 	// twitter4j instance
 	public Twitter twitter = null;
 	
 	public TwitterApp(String name, String API_KEY, String API_SECRET, String ACCESS_KEY, String ACCESS_SECRET) {
 		this.name = name;
-		this.API_KEY = API_KEY;
-		this.API_SECRET = API_SECRET;
-		this.ACCESS_KEY = ACCESS_KEY;
-		this.ACCESS_SECRET = ACCESS_SECRET;
 		
 		ConfigurationBuilder builder = new ConfigurationBuilder();
 		builder.setOAuthConsumerKey(API_KEY);

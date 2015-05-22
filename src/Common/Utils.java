@@ -3,6 +3,7 @@ package Common;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
@@ -11,7 +12,15 @@ import twitter4j.Status;
 import TwitterCrawler.TwitterUser;
 
 public class Utils {
-	public String printExecutingTime(String title, long time) {
+	public String getCurMemoryUsage() {
+		Runtime runtime = Runtime.getRuntime();
+		NumberFormat format = NumberFormat.getInstance();
+		long totalMemorySize = runtime.totalMemory();
+		long freeMemorySize = runtime.freeMemory();
+		return format.format((totalMemorySize - freeMemorySize) / (1024 * 1024));
+	}
+	
+	public String getExecutingTime(String title, long time) {
 		return new String("### " + title + ": "
 				+ String.format("%02d", time / 3600) + ":"
 				+ String.format("%02d", ((time % 3600) / 60)) + ":"

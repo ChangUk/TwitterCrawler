@@ -14,7 +14,10 @@ public class Crawler {
 	private Engine engine = null;
 	private EgoNetwork egoNetwork = null;
 	
+	// Necessary for multi-threads tasking
 	private ExecutorService exeService = null;
+	
+	// Necessary for Breadth-First-Search
 	private Queue<TwitterUser> queue;
 	
 	public Crawler(EgoNetwork network) {
@@ -86,13 +89,16 @@ public class Crawler {
 			user.friends = filteredList;
 		}
 		
+		// Print current memory usage
+		engine.printLog(engine.getMemoryUsage(), false);
+		
 		// Write friendship information into files
 		engine.writeFriendsList();
 		
 		engine.printLog("### Complete: construct network(" + egoNetwork.getEgoUser().id + ")"
 				+ " - Node(" + egoNetwork.getNodeMap().size() + "), Edge(" + egoNetwork.nDirectedEdges / 2
 				+ "), Excluded Invalid Node(" + egoNetwork.getAuthInvalidList().size() + ")", false);
-		engine.printLog(new Utils().printExecutingTime(
+		engine.printLog(new Utils().getExecutingTime(
 				"Network construction time", (System.currentTimeMillis() - crawling_start) / 1000L), false);
 		long crawling_start2 = System.currentTimeMillis();
 		
@@ -109,11 +115,11 @@ public class Crawler {
 		
 		engine.printLog("### Complete: load timelines from Twitter server. "
 				+ "- Excluded Invalid Node(" + egoNetwork.getAuthInvalidList().size() + ")", false);
-		engine.printLog(new Utils().printExecutingTime(
+		engine.printLog(new Utils().getExecutingTime(
 				"Timeline crawling time", (System.currentTimeMillis() - crawling_start2) / 1000L), false);
 		
 		engine.printLog("TWITTER CRAWLING FINISHED: " + egoNetwork.getEgoUser().id, false);
-		engine.printLog(new Utils().printExecutingTime(
+		engine.printLog(new Utils().getExecutingTime(
 				"Total executing time", (System.currentTimeMillis() - crawling_start) / 1000L), true);
 		
 		// Wait for other friends

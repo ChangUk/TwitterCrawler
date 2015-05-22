@@ -560,4 +560,11 @@ public class Engine {
 			}
 		}
 	}
+	
+	/**
+	 * Print currently-allocated memory
+	 */
+	public String getMemoryUsage() {
+		return new String("### Current memory usage: " + utils.getCurMemoryUsage() + " MB");
+	}
 }
