@@ -49,6 +49,7 @@ public class AppManager {
 			}
 			
 			br.close();
+			fr.close();
 		} catch (FileNotFoundException fnfe) {
 			fnfe.printStackTrace();
 			return false;

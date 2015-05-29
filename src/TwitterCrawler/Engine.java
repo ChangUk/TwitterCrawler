@@ -525,14 +525,8 @@ public class Engine {
 				finalList.add(favorite);
 		}
 		
-		Thread thread = new Thread() {
-			@Override
-			public void run() {
-				super.run();
-				utils.writeFavorites(outputPath + "/favorites/", userID, finalList);
-			}
-		};
-		exeService.submit(thread);
+		// Write as a file
+		utils.writeFavorites(outputPath + "/favorites/", userID, finalList);
 	}
 	
 	/**

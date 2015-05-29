@@ -32,25 +32,25 @@ public class TwitterApp {
 		 * I replace this listener into TwitterException handler for each API call.
 		 * @author ChangUk
 		 */
-//			this.twitter.addRateLimitStatusListener(new RateLimitStatusListener() {
-//				@Override
-//				public void onRateLimitStatus(RateLimitStatusEvent event) {
-//					RateLimitStatus status = event.getRateLimitStatus();
-//					AppManager appManager = AppManager.getSingleton();
-//					if (status.getRemaining() == 0) {
-//						appManager.registerLimitedApp(TwitterApp.this, status.getSecondsUntilReset());
-//						printRateLimitStatus();
-//					}
-//				}
-//				
-//				@Override
-//				public void onRateLimitReached(RateLimitStatusEvent event) {
-//					RateLimitStatus status = event.getRateLimitStatus();
-//					AppManager appManager = AppManager.getSingleton();
+//		this.twitter.addRateLimitStatusListener(new RateLimitStatusListener() {
+//			@Override
+//			public void onRateLimitStatus(RateLimitStatusEvent event) {
+//				RateLimitStatus status = event.getRateLimitStatus();
+//				AppManager appManager = AppManager.getSingleton();
+//				if (status.getRemaining() == 0) {
 //					appManager.registerLimitedApp(TwitterApp.this, status.getSecondsUntilReset());
 //					printRateLimitStatus();
 //				}
-//			});
+//			}
+//			
+//			@Override
+//			public void onRateLimitReached(RateLimitStatusEvent event) {
+//				RateLimitStatus status = event.getRateLimitStatus();
+//				AppManager appManager = AppManager.getSingleton();
+//				appManager.registerLimitedApp(TwitterApp.this, status.getSecondsUntilReset());
+//				printRateLimitStatus();
+//			}
+//		});
 	}
 	
 	/**
