@@ -20,7 +20,7 @@ import Common.EgoNetwork;
 import Common.Settings;
 import Common.Utils;
 
-public class Engine {
+public class Tool {
 	private EgoNetwork network = null;
 	private ExecutorService exeService = null;
 	private final String language;
@@ -31,7 +31,7 @@ public class Engine {
 	private Utils utils = new Utils();
 	private String msgLog = new String();
 	
-	public Engine(EgoNetwork network, ExecutorService exeService) {
+	public Tool(EgoNetwork network, ExecutorService exeService) {
 		mAppManager = AppManager.getSingleton();
 		
 		this.network = network;
