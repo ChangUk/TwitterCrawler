@@ -1,7 +1,6 @@
-/TwitterCrawler/
-/Util/
-/EgoNetwork.class
-/TwitterUser.class
-/DataPreprocessing/
 /Common/
+/DataPreprocessing/
+/TwitterCrawler/
 /TwitterMiner.class
+/crawler/
+/crawling/

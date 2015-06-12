@@ -3,23 +3,41 @@ package Common;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.text.DateFormat;
 import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.concurrent.ExecutorService;
-
-import twitter4j.Status;
-import TwitterCrawler.TwitterUser;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 
 public class Utils {
+	private String msgLog = new String();
+	
+	/**
+	 * Wait the given period of time
+	 * @param milliseconds Waiting time
+	 */
+	public void sleep(long milliseconds) {
+		try {
+			Thread.sleep(milliseconds);
+		} catch (InterruptedException ie) {
+		}
+	}
+	
+	/**
+	 * Get current memory usage
+	 * @return Memory usage
+	 */
 	public String getCurMemoryUsage() {
 		Runtime runtime = Runtime.getRuntime();
 		NumberFormat format = NumberFormat.getInstance();
-		long totalMemorySize = runtime.totalMemory();
-		long freeMemorySize = runtime.freeMemory();
-		return format.format((totalMemorySize - freeMemorySize) / (1024 * 1024));
+		return format.format((runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024));
 	}
 	
+	/**
+	 * Get program executing time log message.
+	 * @param title Additional log message ahead of executing time information
+	 * @param time Executing time (milliseconds)
+	 * @return Log message of program executing time
+	 */
 	public String getExecutingTime(String title, long time) {
 		return new String("### " + title + ": "
 				+ String.format("%02d", time / 3600) + ":"
@@ -27,141 +45,38 @@ public class Utils {
 				+ String.format("%02d", time % 60));
 	}
 	
-	public void writeFriendsIDs(String outputPath, EgoNetwork network, ExecutorService exeService) {
-		if (network == null || network.getNodeMap() == null)
-			return;
-		
-		Thread thread = new Thread() {
-			@Override
-			public void run() {
-				super.run();
-				
-				for (HashMap.Entry<Long, TwitterUser> entry : network.getNodeMap().entrySet()) {
-					writeFriendsIDs(outputPath, entry.getKey(), entry.getValue().friends);
-				}
-			}
-		};
-		exeService.submit(thread);
+	/**
+	 * Get current system time.
+	 * @return Current system time log message according to the given String format.
+	 */
+	public String getCurrentTime() {
+		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+		Calendar now = Calendar.getInstance();
+		return dateFormat.format(now.getTime());
 	}
 	
-	public void writeFriendsIDs(String outputPath, long userID, ArrayList<Long> friendsIDs) {
-		if (friendsIDs == null || friendsIDs.isEmpty())
-			return;
+	/**
+	 * Print a given log message out. You are able to flush the log message to *.log file as well.
+	 * @param log log message
+	 * @param flush If true, the concatenated log texts are saved into a log file.
+	 */
+	public void printLog(TwitterNetwork network, String log, boolean flush) {
+		System.out.println(log);
+		msgLog = msgLog.concat(log + "\r\n");
 		
-		PrintWriter writer = null;
-		try {
-			writer = new PrintWriter(outputPath + String.valueOf(userID) + ".friends", "utf-8");
-			for (long friendID : friendsIDs) {
-				writer.println(friendID);
-			}
-		} catch (UnsupportedEncodingException uee) {
-			uee.printStackTrace();
-		} catch (FileNotFoundException fnfe) {
-			fnfe.printStackTrace();
-		} finally {
-			if (writer != null)
+		if (flush == true) {
+			PrintWriter writer = null;
+			try {
+				writer = new PrintWriter(network.getOutputPath() + "crawling_info.log", "utf-8");
+				writer.print(msgLog);
 				writer.close();
-		}
-	}
-	
-	public void writeTweets(String outputPath, long userID, ArrayList<Status> tweets) {
-		if (tweets == null || tweets.isEmpty())
-			return;
-		
-		PrintWriter writer = null;
-		try {
-			writer = new PrintWriter(outputPath + userID + ".tweets", "utf-8");
-			for (Status tweet : tweets) {
-				writer.println(tweet.getId() + "\t" + tweet.getText());
+			} catch (UnsupportedEncodingException uee) {
+				uee.printStackTrace();
+			} catch (FileNotFoundException fnfe) {
+				fnfe.printStackTrace();
+			} finally {
+				msgLog = new String("");
 			}
-		} catch (UnsupportedEncodingException uee) {
-			uee.printStackTrace();
-		} catch (FileNotFoundException fnfe) {
-			fnfe.printStackTrace();
-		} finally {
-			if (writer != null)
-				writer.close();
-		}
-	}
-	
-	public void writeSharingIDs(String outputPath, long userID, HashMap<Long, Long> sharings) {
-		if (sharings == null || sharings.isEmpty())
-			return;
-		
-		PrintWriter writer = null;
-		try {
-			writer = new PrintWriter(outputPath + userID + ".sharings", "utf-8");
-			for (HashMap.Entry<Long, Long> mentionEntry : sharings.entrySet()) {
-				writer.println(mentionEntry.getValue() + "\t" + mentionEntry.getKey());
-			}
-		} catch (UnsupportedEncodingException uee) {
-			uee.printStackTrace();
-		} catch (FileNotFoundException fnfe) {
-			fnfe.printStackTrace();
-		} finally {
-			if (writer != null)
-				writer.close();
-		}
-	}
-	
-	public void writeRetweetIDs(String outputPath, long userID, ArrayList<Status> retweets) {
-		if (retweets == null || retweets.isEmpty())
-			return;
-		
-		PrintWriter writer = null;
-		try {
-			writer = new PrintWriter(outputPath + userID + ".retweets", "utf-8");
-			for (Status retweet : retweets) {
-				writer.println(retweet.getRetweetedStatus().getUser().getId() + "\t"
-						+ retweet.getRetweetedStatus().getId());
-			}
-		} catch (UnsupportedEncodingException uee) {
-			uee.printStackTrace();
-		} catch (FileNotFoundException fnfe) {
-			fnfe.printStackTrace();
-		} finally {
-			if (writer != null)
-				writer.close();
-		}
-	}
-	
-	public void writeMentions(String outputPath, long userID, HashMap<Long, Integer> mentions) {
-		if (mentions == null || mentions.isEmpty())
-			return;
-		
-		PrintWriter writer = null;
-		try {
-			writer = new PrintWriter(outputPath + userID + ".mentions", "utf-8");
-			for (HashMap.Entry<Long, Integer> mentionEntry : mentions.entrySet()) {
-				writer.println(mentionEntry.getKey() + "\t" + mentionEntry.getValue());
-			}
-		} catch (UnsupportedEncodingException uee) {
-			uee.printStackTrace();
-		} catch (FileNotFoundException fnfe) {
-			fnfe.printStackTrace();
-		} finally {
-			if (writer != null)
-				writer.close();
-		}
-	}
-	
-	public void writeFavorites(String outputPath, long userID, ArrayList<Status> favorites) {
-		if (favorites == null || favorites.isEmpty())
-			return;
-		
-		PrintWriter writer = null;
-		try {
-			writer = new PrintWriter(outputPath + userID + ".favorites", "utf-8");
-			for (Status favorite : favorites) {
-				writer.println(favorite.getUser().getId() + "\t" + favorite.getId() + "\t" + favorite.getText());
-			}
-		} catch (UnsupportedEncodingException uee) {
-			uee.printStackTrace();
-		} catch (FileNotFoundException fnfe) {
-			fnfe.printStackTrace();
-		} finally {
-			if (writer != null)
-				writer.close();
 		}
 	}
 }

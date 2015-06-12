@@ -1,132 +1,95 @@
 package TwitterCrawler;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import Common.EgoNetwork;
 import Common.Utils;
 
 public class Crawler {
-	private Tool tool = null;
+	private Engine engine = Engine.getSingleton();
 	private EgoNetwork egoNetwork = null;
 	
-	// Necessary for multi-threads tasking
-	private ExecutorService exeService = null;
-	
 	// Necessary for Breadth-First-Search
-	private Queue<TwitterUser> queue;
+	private Queue<Long> queue;
 	
-	public Crawler(EgoNetwork network) {
-		this.exeService = Executors.newCachedThreadPool();
-		this.tool = new Tool(network, exeService);
-		this.egoNetwork = network;
-		this.queue = new LinkedList<TwitterUser>();
-		
-		TwitterUser egoUser = network.getEgoUser();
-		network.getNodeMap().put(egoUser.id, egoUser);
-		queue.offer(egoUser);
+	private Utils utils = new Utils();
+	
+	public Crawler(EgoNetwork egoNetwork) {
+		this.egoNetwork = egoNetwork;
+		this.queue = new LinkedList<Long>();
+		queue.offer(egoNetwork.getSeedUser().getID());
 	}
 	
 	public void run() {
 		if (egoNetwork.level() < 0) return;
 		
-		tool.printLog("TWITTER CRAWLING STARTED: " + egoNetwork.getEgoUser().id, false);
+		utils.printLog(egoNetwork, "TWITTER CRAWLING STARTED: " + egoNetwork.getSeedUser().getID() + " - " + utils.getCurrentTime(), false);
 		long crawling_start = System.currentTimeMillis();
 		
 		// Set visiting limit for exploring with BFS until at the given level
-		int[] visitingLimit = new int[egoNetwork.level() + 1];
-		visitingLimit[0] = 1;
+		long[] nNodesToVisit = new long[egoNetwork.level() + 1];
+		nNodesToVisit[0] = 1;
 		for (int i = 1; i <= egoNetwork.level(); i++)
-			visitingLimit[i] = 0;
-		int cursor = 0;
-		int cnt = 0;
+			nNodesToVisit[i] = 0;
+		
+		// Current pointer to indicate level
+		int curLevel = 0;
 		
 		// Scan Twitter ego-network at the given level by using Breath First Search (BFS)
 		while (queue.isEmpty() == false) {
-			TwitterUser user = queue.poll();
-			visitingLimit[cursor] -= 1;
-			user.friends = tool.getFriends(user.id);
+			// Get a user from queue
+			long userID = queue.poll();
+			nNodesToVisit[curLevel] -= 1;
 			
-			cnt += 1;
-			if (cnt % 500 == 0)
-				System.out.println("Crawling process: " + cnt / 500);
+			// A node
+			TwitterUser user;
 			
-			if (cursor < egoNetwork.level()) {
-				int newNodeCount = 0;
-				for (long friendID : user.friends) {
-					if (egoNetwork.getNodeMap().containsKey(friendID))
-						continue;
-					TwitterUser friend = new TwitterUser(friendID);
-					egoNetwork.getNodeMap().put(friend.id, friend);
-					queue.offer(friend);
-					newNodeCount += 1;
-				}
-				visitingLimit[cursor + 1] += newNodeCount;
+			// Check if the user has ever been crawled
+			if (engine.getUserMap().containsKey(userID)) {
+				user = engine.getUserMap().get(userID);
+			} else {
+				// If the user is not obtained by crawling yet, create new user with the given user ID
+				user = new TwitterUser(userID);
+				
+				// Do crawling
+				engine.loadFollowings(egoNetwork, user, 5000, true);
+				engine.loadFollowers(egoNetwork, user, 5000, true);
+				engine.loadFriendship(egoNetwork, user, true);
+				engine.getTimeline(egoNetwork, user, true);
+				engine.getFavorites(egoNetwork, user, true);
+				
+				// Register Twitter user
+				engine.getUserMap().put(userID, user);
 			}
 			
-			if (visitingLimit[cursor] == 0) {
-				cursor += 1;
-				if (cursor > egoNetwork.level())
+			if (egoNetwork.getNodeList().contains(userID) == false) {
+				// Add node into network
+				egoNetwork.getNodeList().add(userID);
+				
+				// Increase the number of nodes at the next level
+				if (curLevel < egoNetwork.level() && user.isValid()) {
+					for (long friendID : user.getFriendshipList()) {
+						if (egoNetwork.getNodeList().contains(friendID) || queue.contains(friendID))
+							continue;
+						queue.offer(friendID);
+						nNodesToVisit[curLevel + 1] += 1;
+					}
+				}
+			}
+			
+			// If all nodes are visited, shift cursor or exit crawling
+			if (nNodesToVisit[curLevel] == 0) {
+				curLevel += 1;
+				if (curLevel > egoNetwork.level())
 					break;
 			}
 		}
 		
-		// Filter invalid user IDs
-		for (long invalidID : egoNetwork.getAuthInvalidList())
-			egoNetwork.getNodeMap().remove(invalidID);
-		for (TwitterUser user : egoNetwork.getNodeMap().values()) {
-			ArrayList<Long> filteredList = new ArrayList<Long>();
-			for (long friendsID : user.friends) {
-				if (egoNetwork.getNodeMap().containsKey(friendsID)) {
-					filteredList.add(friendsID);
-					egoNetwork.nDirectedEdges += 1;
-				}
-			}
-			user.friends = filteredList;
-		}
-		
 		// Print current memory usage
-		tool.printLog(tool.getMemoryUsage(), false);
-		
-		// Write friendship information into files
-		tool.writeFriendsList();
-		
-		tool.printLog("### Complete: construct network(" + egoNetwork.getEgoUser().id + ")"
-				+ " - Node(" + egoNetwork.getNodeMap().size() + "), Edge(" + egoNetwork.nDirectedEdges / 2
-				+ "), Excluded Invalid Node(" + egoNetwork.getAuthInvalidList().size() + ")", false);
-		tool.printLog(new Utils().getExecutingTime(
-				"Network construction time", (System.currentTimeMillis() - crawling_start) / 1000L), false);
-		long crawling_start2 = System.currentTimeMillis();
-		
-		// Get timelines of users of a given network
-		cnt = 0;
-		for (long userID : egoNetwork.getNodeMap().keySet()) {
-			tool.loadTimeline(userID);
-			tool.loadFavorites(userID);
-			
-			cnt += 1;
-			if (cnt % 500 == 0)
-				System.out.println("Timeline process: " + cnt / 500);
-		}
-		
-		tool.printLog("### Complete: load timelines from Twitter server. "
-				+ "- Excluded Invalid Node(" + egoNetwork.getAuthInvalidList().size() + ")", false);
-		tool.printLog(new Utils().getExecutingTime(
-				"Timeline crawling time", (System.currentTimeMillis() - crawling_start2) / 1000L), false);
-		
-		tool.printLog("TWITTER CRAWLING FINISHED: " + egoNetwork.getEgoUser().id, false);
-		tool.printLog(new Utils().getExecutingTime(
-				"Total executing time", (System.currentTimeMillis() - crawling_start) / 1000L), true);
-		
-		// Wait for other friends
-		try {
-			exeService.shutdown();
-			exeService.awaitTermination(600, TimeUnit.SECONDS);
-		} catch (InterruptedException ie) {
-		}
+		utils.printLog(egoNetwork, "### Current memory usage: " + utils.getCurMemoryUsage() + " MB", false);
+		utils.printLog(egoNetwork, "### Complete: Node(" + egoNetwork.getNodeCount() + "), Edge(" + egoNetwork.getEdgeCount() + ")", false);
+		utils.printLog(egoNetwork, "TWITTER CRAWLING FINISHED: " + egoNetwork.getSeedUser().getID(), false);
+		utils.printLog(egoNetwork, utils.getExecutingTime("Total executing time", (System.currentTimeMillis() - crawling_start) / 1000L), true);
 	}
 }

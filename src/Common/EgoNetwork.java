@@ -1,20 +1,21 @@
 package Common;
-import TwitterCrawler.TwitterUser;
+
+import twitter4j.User;
 
 public class EgoNetwork extends TwitterNetwork {
-	private final TwitterUser egoUser;
 	private final int level;
 	
 	/**
 	 * To get user's Twitter ID, visit here: <a href="http://tweeterid.com/">http://tweeterid.com/</a>.
 	 */
-	public EgoNetwork(long egoUserID, int level) {
-		this.egoUser = new TwitterUser(egoUserID);
+	public EgoNetwork(User egoUser, int level) {
+		super(egoUser);
 		this.level = level;
 	}
 	
-	public TwitterUser getEgoUser() {
-		return egoUser;
+	public void init() {
+		this.outputPath = Settings.PATH_SAVE + mSeedUser.getID() + "_" + level + "/";
+		makeDirectories();
 	}
 	
 	public int level() {
