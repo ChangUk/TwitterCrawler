@@ -1,7 +1,11 @@
 package TwitterCrawler;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import Common.EgoNetwork;
 import Common.Utils;
@@ -13,11 +17,13 @@ public class Crawler {
 	// Necessary for Breadth-First-Search
 	private Queue<Long> queue;
 	
+	private ExecutorService exeService = null;
 	private Utils utils = new Utils();
 	
 	public Crawler(EgoNetwork egoNetwork) {
 		this.egoNetwork = egoNetwork;
 		this.queue = new LinkedList<Long>();
+		this.exeService = Executors.newCachedThreadPool();
 		queue.offer(egoNetwork.getSeedUser().getID());
 	}
 	
@@ -53,11 +59,21 @@ public class Crawler {
 				user = new TwitterUser(userID);
 				
 				// Do crawling
-				engine.loadFollowings(egoNetwork, user, 5000, true);
-				engine.loadFollowers(egoNetwork, user, 5000, true);
-				engine.loadFriendship(egoNetwork, user, true);
-				engine.getTimeline(egoNetwork, user, true);
-				engine.getFavorites(egoNetwork, user, true);
+				ArrayList<Long> followings = engine.getFollowings(egoNetwork, user, 5000, true);
+				user.setFollowingList(followings);
+				ArrayList<Long> followers = engine.getFollowers(egoNetwork, user, 5000, true);
+				user.setFollowerList(followers);
+				ArrayList<Long> friends = engine.getFriendship(egoNetwork, user, true);
+				user.setFriendshipList(friends);
+				Thread timelineThread = new Thread() {
+					@Override
+					public void run() {
+						super.run();
+						engine.getTimeline(egoNetwork, user, true);
+						engine.getFavorites(egoNetwork, user, true);
+					}
+				};
+				exeService.submit(timelineThread);
 				
 				// Register Twitter user
 				engine.getUserMap().put(userID, user);
@@ -85,6 +101,16 @@ public class Crawler {
 					break;
 			}
 		}
+		
+		// Wait for other friends
+		try {
+			exeService.shutdown();
+			exeService.awaitTermination(600, TimeUnit.SECONDS);
+		} catch (InterruptedException ie) {
+		}
+		
+		// Garbage collection
+		System.gc();
 		
 		// Print current memory usage
 		utils.printLog(egoNetwork, "### Current memory usage: " + utils.getCurMemoryUsage() + " MB", false);

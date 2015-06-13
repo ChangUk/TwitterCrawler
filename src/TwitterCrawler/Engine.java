@@ -57,25 +57,59 @@ public class Engine {
 	}
 	
 	/**
-	 * Load following users' IDs into target user's following list.
 	 * The following users' IDs are obtained by Twitter REST API.
 	 * @param network Target network to be crawled
 	 * @param user User that data is loaded into.
-	 * @param maxCount Maximum number of record to be obtained.
+	 * @param maxCount Maximum number of record to be obtained
 	 * @param writeFile Set <b>true</b> if you want to save data as a file.
+	 * @return Following users' IDs
 	 */
-	public void loadFollowings(TwitterNetwork network, TwitterUser user, int maxCount, boolean writeFile) {
-		ArrayList<Long> result = new ArrayList<Long>();
-		loadFollowingsIDs(network, user, maxCount, result, -1);
-		user.setFollowingList(result);
+	public ArrayList<Long> getFollowings(TwitterNetwork network, TwitterUser user, int maxCount, boolean writeFile) {
+		if (user.isValid() == false) return null;
 		
-		// Write crawled data into file
+		String endpoint = "/friends/ids";
+		ArrayList<Long> followingUsers = new ArrayList<Long>();
+		
+		long cursor = -1;
+		while (cursor != 0) {
+			try {
+				app = mAppManager.getAvailableApp(endpoint);
+				IDs followingsIDs = app.twitter.getFriendsIDs(user.getID(), cursor);
+				for (long followingID : followingsIDs.getIDs()) {
+					followingUsers.add(followingID);
+					if (followingUsers.size() == maxCount)
+						break;
+				}
+				cursor = followingsIDs.getNextCursor();
+			} catch (TwitterException te) {
+				boolean retry = true;
+				if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
+					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
+					app.printRateLimitStatus(endpoint);
+				} else {
+					switch (te.getStatusCode()) {
+					default:									// Unknown exception occurs
+						te.printStackTrace();
+					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
+					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
+						user.setInvalid();
+						retry = false;							// Do not retry anymore
+						break;
+					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
+					case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
+						new Utils().sleep(5000);				// Retry crawling 5 seconds later
+						break;
+					}
+				}
+				if (retry == false) break;
+			}
+		}
+		
 		if (writeFile == true) {
 			try {
 				PrintWriter writer = new PrintWriter(network.getPathFollowingData() + user.getID() + ".following", "utf-8");
-				for (long followingID : result) {
+				for (long followingID : followingUsers)
 					writer.println(followingID);
-				}
 				writer.close();
 			} catch (UnsupportedEncodingException uee) {
 				uee.printStackTrace();
@@ -83,82 +117,64 @@ public class Engine {
 				fnfe.printStackTrace();
 			}
 		}
-	}
-	
-	public void loadFollowingsIDs(TwitterNetwork network, TwitterUser user, int maxCount, ArrayList<Long> result, long cursor) {
-		String endpoint = "/friends/ids";
-		if (user.isValid() == false) return;
 		
-		try {
-			while (cursor != 0) {
-				// Read friend_IDs from Twitter API per page
-				app = mAppManager.getAvailableApp(endpoint);
-				IDs followingsIDs = app.twitter.getFriendsIDs(user.getID(), cursor);
-				
-				// Set friend list per page
-				for (long followingID : followingsIDs.getIDs()) {
-					result.add(followingID);
-					if (result.size() == maxCount) return;
-				}
-				
-				cursor = followingsIDs.getNextCursor();
-			}
-		} catch (TwitterException te) {
-			if (te.exceededRateLimitation()) {
-				// Register current application as limited one
-				mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
-				app.printRateLimitStatus(endpoint);
-				
-				// Keep crawling
-				loadFollowingsIDs(network, user, maxCount, result, cursor);
-			} else {
-				try {
-					switch (te.getStatusCode()) {
-					case 401:	// Authentication credentials were missing or incorrect.
-						user.setInvalid();
-						break;
-					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
-						System.out.println("Error 404 on getting followings: " + user.getID());
-						user.setInvalid();
-						break;
-					case 503:	// The Twitter servers are up, but overloaded with requests.
-					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
-						te.printStackTrace();
-						Thread.sleep(5000);
-						
-						// Keep crawling
-						loadFollowingsIDs(network, user, maxCount, result, cursor);
-						break;
-					default:
-						te.printStackTrace();
-						break;
-					}
-				} catch (InterruptedException ie) {
-				}
-			}
-		}
+		return followingUsers;
 	}
 	
 	/**
-	 * Load followers' IDs into target user's follower list.
 	 * The followers' IDs are obtained by Twitter REST API.
 	 * @param network Target network to be crawled
 	 * @param user User that data is loaded into.
-	 * @param maxCount Maximum number of record to be obtained.
+	 * @param maxCount Maximum number of record to be obtained
 	 * @param writeFile Set <b>true</b> if you want to save data as a file.
+	 * @return Followers' IDs
 	 */
-	public void loadFollowers(TwitterNetwork network, TwitterUser user, int maxCount, boolean writeFile) {
-		ArrayList<Long> result = new ArrayList<Long>();
-		loadFollowersIDs(network, user, maxCount, result, -1);
-		user.setFollowerList(result);
+	public ArrayList<Long> getFollowers(TwitterNetwork network, TwitterUser user, int maxCount, boolean writeFile) {
+		if (user.isValid() == false) return null;
 		
-		// Write crawled data into file
+		String endpoint = "/followers/ids";
+		ArrayList<Long> followers = new ArrayList<Long>();
+		
+		long cursor = -1;
+		while (cursor != 0) {
+			try {
+				app = mAppManager.getAvailableApp(endpoint);
+				IDs followersIDs = app.twitter.getFollowersIDs(user.getID(), cursor);
+				for (long followerID : followersIDs.getIDs()) {
+					followers.add(followerID);
+					if (followers.size() == maxCount)
+						break;
+				}
+				cursor = followersIDs.getNextCursor();
+			} catch (TwitterException te) {
+				boolean retry = true;
+				if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
+					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
+					app.printRateLimitStatus(endpoint);
+				} else {
+					switch (te.getStatusCode()) {
+					default:									// Unknown exception occurs
+						te.printStackTrace();
+					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
+					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
+						user.setInvalid();
+						retry = false;							// Do not retry anymore
+						break;
+					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
+					case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
+						new Utils().sleep(5000);				// Retry crawling 5 seconds later
+						break;
+					}
+				}
+				if (retry == false) break;
+			}
+		}
+		
 		if (writeFile == true) {
 			try {
 				PrintWriter writer = new PrintWriter(network.getPathFollowerData() + user.getID() + ".follower", "utf-8");
-				for (long followerID : result) {
+				for (long followerID : followers)
 					writer.println(followerID);
-				}
 				writer.close();
 			} catch (UnsupportedEncodingException uee) {
 				uee.printStackTrace();
@@ -166,60 +182,8 @@ public class Engine {
 				fnfe.printStackTrace();
 			}
 		}
-	}
-	
-	public void loadFollowersIDs(TwitterNetwork network, TwitterUser user, int maxCount, ArrayList<Long> result, long cursor) {
-		String endpoint = "/followers/ids";
-		if (user.isValid() == false) return;
 		
-		try {
-			while (cursor != 0) {
-				// Read followers' IDs from Twitter API per page
-				app = mAppManager.getAvailableApp(endpoint);
-				IDs followersIDs = app.twitter.getFollowersIDs(user.getID(), cursor);
-				
-				// Set follower list per page
-				for (long followerID : followersIDs.getIDs()) {
-					result.add(followerID);
-					if (result.size() == maxCount) return;
-				}
-				
-				cursor = followersIDs.getNextCursor();
-			}
-		} catch (TwitterException te) {
-			if (te.exceededRateLimitation()) {
-				// Register current application as limited one
-				mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
-				app.printRateLimitStatus(endpoint);
-				
-				// Keep crawling
-				loadFollowersIDs(network, user, maxCount, result, cursor);
-			} else {
-				try {
-					switch (te.getStatusCode()) {
-					case 401:	// Authentication credentials were missing or incorrect.
-						user.setInvalid();
-						break;
-					case 404:	// The URI requested is invalid or the resource requested, such as a user, does not exists.
-						System.out.println("Error 404 on getting followers: " + user.getID());
-						user.setInvalid();
-						break;
-					case 503:	// The Twitter servers are up, but overloaded with requests.
-					case -1:	// Caused by: java.net.UnknownHostException: api.twitter.com
-						te.printStackTrace();
-						Thread.sleep(5000);
-						
-						// Keep crawling
-						loadFollowersIDs(network, user, maxCount, result, cursor);
-						break;
-					default:
-						te.printStackTrace();
-						break;
-					}
-				} catch (InterruptedException ie) {
-				}
-			}
-		}
+		return followers;
 	}
 	
 	/**
@@ -232,9 +196,9 @@ public class Engine {
 	 * @param lang A filtering option by language
 	 * @param writeFile Set <b>true</b> if you want to save data as a file.
 	 */
-	public void loadFriendship(TwitterNetwork network, TwitterUser user, boolean writeFile) {
-		if (user.isValid() == false) return;
-		if (user.getFollowerList() == null || user.getFollowingList() == null) return;
+	public ArrayList<Long> getFriendship(TwitterNetwork network, TwitterUser user, boolean writeFile) {
+		if (user.isValid() == false) return null;
+		if (user.getFollowerList() == null || user.getFollowingList() == null) return null;
 		
 		// Find intersection between followers and followees
 		ArrayList<Long> intersection = new ArrayList<Long>();
@@ -245,7 +209,6 @@ public class Engine {
 		
 		// Filtering with some criteria and then set friendship list of a user
 		ArrayList<Long> friends = lookupUsers(network, intersection);
-		user.setFriendshipList(friends);
 		
 		// Write crawled data into file
 		if (writeFile == true && friends.isEmpty() == false) {
@@ -260,6 +223,8 @@ public class Engine {
 				fnfe.printStackTrace();
 			}
 		}
+		
+		return friends;
 	}
 	
 	/**
@@ -275,12 +240,23 @@ public class Engine {
 		int cursor = 0;
 		while (cursor < candidatesIDs.size()) {
 			// Make buffer space and fill it with IDs
-			int remaining = candidatesIDs.size() - cursor;
-			long[] buffer = new long[(remaining >= 100) ? 100 : remaining];
-			for (int i = 0; i < buffer.length; i++) {
-				buffer[i] = candidatesIDs.get(cursor);
+			ArrayList<Long> bufferList = new ArrayList<Long>();
+			for (int i = cursor; i < candidatesIDs.size() && bufferList.size() < 100; i++) {
+				long userID = candidatesIDs.get(i);
+				TwitterUser user = mUserMap.get(userID);
+				if (user == null) {
+					bufferList.add(userID);
+				} else {
+					if (user.isValid() == true)
+						validUsersIDs.add(userID);
+				}
 				cursor++;
 			}
+			
+			// Buffer List -> Buffer Array
+			long[] buffer = new long[bufferList.size()];
+			for (int i = 0; i < buffer.length; i++)
+				buffer[i] = bufferList.get(i);
 			
 			// Lookup buffer
 			while (true) {
@@ -288,7 +264,7 @@ public class Engine {
 					app = mAppManager.getAvailableApp(endpoint);
 					ResponseList<User> testset = app.twitter.lookupUsers(buffer);
 					for (User user : testset) {
-						if (handleUserValidity(network, user) != -1L)
+						if (isValidUser(network, user) == true)
 							validUsersIDs.add(user.getId());
 					}
 					break;
@@ -299,20 +275,20 @@ public class Engine {
 						app.printRateLimitStatus(endpoint);
 					} else {
 						switch (te.getStatusCode()) {
-						case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
-						case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
-							new Utils().sleep(5000);				// Retry crawling 5 seconds later
-							break;
-						case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
-						case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
 						default:									// Unknown exception occurs
 							te.printStackTrace();
+						case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
+						case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
 							for (long id : buffer) {
-								User user = getUser(id);
-								if (handleUserValidity(network, user) != -1L)
+								User user = showUser(id);
+								if (isValidUser(network, user) == true)
 									validUsersIDs.add(id);
 							}
 							retry = false;							// Do not retry anymore
+							break;
+						case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
+						case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
+							new Utils().sleep(5000);				// Retry crawling 5 seconds later
 							break;
 						}
 					}
@@ -328,14 +304,14 @@ public class Engine {
 	 * Check if the user is valid and then register his validity as a global information.
 	 * @param network Target network to be crawled
 	 * @param user Test user
-	 * @return User ID if the user is valid, -1L otherwise.
+	 * @return true if the user is valid, false otherwise.
 	 */
-	public long handleUserValidity(TwitterNetwork network, User user) {
-		if (user == null) return -1L;
+	public boolean isValidUser(TwitterNetwork network, User user) {
+		if (user == null) return false;
 		
 		if (Settings.isRequirementSatisfied(network, user, true)) {
 			mScreenNameMap.put(user.getScreenName(), user.getId());
-			return user.getId();
+			return true;
 		} else {
 			if (mUserMap.containsKey(user.getId())) {
 				mUserMap.get(user.getId()).setInvalid();
@@ -344,7 +320,7 @@ public class Engine {
 				invalidUser.setInvalid();
 				mUserMap.put(user.getId(), invalidUser);
 			}
-			return -1L;
+			return false;
 		}
 	}
 	
@@ -353,7 +329,7 @@ public class Engine {
 	 * @param screenName
 	 * @return User instance
 	 */
-	public User getUser(long userID) {
+	public User showUser(long userID) {
 		String endpoint = "/users/show/:id";
 		
 		while (true) {

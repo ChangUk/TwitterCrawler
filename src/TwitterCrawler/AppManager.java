@@ -34,7 +34,7 @@ public class AppManager {
 	
 	public boolean loadTwitterApps() {
 		try {
-			File file = new File(Settings.PATH_APPS_INFO);
+			File file = new File(Settings.PATH_APPS);
 			FileReader fr = new FileReader(file);
 			BufferedReader br = new BufferedReader(fr);
 			
@@ -68,7 +68,7 @@ public class AppManager {
 	 * @param endpoint endpoint
 	 * @param secondsUntilReset time(second) until reset
 	 */
-	public void registerLimitedApp(TwitterApp app, String endpoint, int secondsUntilReset) {
+	public synchronized void registerLimitedApp(TwitterApp app, String endpoint, int secondsUntilReset) {
 		ArrayList<TwitterApp> limitedAppList = limitedEndpoints.get(endpoint);
 		if (limitedAppList == null)
 			limitedAppList = new ArrayList<TwitterApp>();
@@ -96,7 +96,7 @@ public class AppManager {
 	 * @param endpoint
 	 * @return available TwitterApp
 	 */
-	public TwitterApp getAvailableApp(String endpoint) {
+	public synchronized TwitterApp getAvailableApp(String endpoint) {
 		Logger logger = Logger.getGlobal();
 		
 		int cursor = mAppQueue.getCursor();
@@ -104,10 +104,8 @@ public class AppManager {
 			TwitterApp app = mAppQueue.getCurrentItem();
 			mAppQueue.next();
 			
-			if (limitedEndpoints.containsKey(endpoint) == false || limitedEndpoints.get(endpoint).contains(app) == false) {
-//				logger.info("\tApp(" + app.name + " - '" + endpoint + "')");
+			if (limitedEndpoints.containsKey(endpoint) == false || limitedEndpoints.get(endpoint).contains(app) == false)
 				return app;
-			}
 			
 			if (mAppQueue.peekNextCursor() == cursor) {
 				try {

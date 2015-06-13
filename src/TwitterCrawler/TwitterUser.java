@@ -59,6 +59,12 @@ public class TwitterUser {
 		this.mFriendshipList = friendsIDs;
 	}
 	
+	public void nullifyLists() {
+		this.mFollowingList = null;
+		this.mFollowerList = null;
+		this.mFriendshipList = null;
+	}
+	
 //	/**
 //	 * Check if this user is normal and heavy user or not.
 //	 * @param lang Criterion #1: language matching (If null, this criterion is ignored)

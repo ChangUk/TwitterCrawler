@@ -3,8 +3,8 @@ package Common;
 import twitter4j.User;
 
 public class Settings {
-	public static final String PATH_SAVE = "../Data/TwitterData/";
-	public static final String PATH_APPS_INFO = "../TwitterApp.dat";
+	public static final String PATH_APPS = "../TwitterApp.dat";
+	public static final String PATH_DATA = "../Data/TwitterData/";
 	
 	/**
 	 * Check if this user is normal and heavy user or not.

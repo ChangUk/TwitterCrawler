@@ -31,7 +31,7 @@ public class TwitterNetwork {
 	}
 	
 	public void init() {
-		this.outputPath = Settings.PATH_SAVE + "global/";
+		this.outputPath = Settings.PATH_DATA + "global/";
 		makeDirectories();
 	}
 	
