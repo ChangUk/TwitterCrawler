@@ -211,7 +211,7 @@ public class Engine {
 		ArrayList<Long> friends = lookupUsers(network, intersection);
 		
 		// Write crawled data into file
-		if (writeFile == true && friends.isEmpty() == false) {
+		if (writeFile == true) {
 			try {
 				PrintWriter writer = new PrintWriter(network.getPathFriendshipData() + user.getID() + ".friendship", "utf-8");
 				for (long friendID : friends)
@@ -252,6 +252,7 @@ public class Engine {
 				}
 				cursor++;
 			}
+			if (bufferList.isEmpty()) break;
 			
 			// Buffer List -> Buffer Array
 			long[] buffer = new long[bufferList.size()];
