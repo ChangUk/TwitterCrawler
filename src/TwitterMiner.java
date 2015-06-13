@@ -11,9 +11,9 @@ public class TwitterMiner {
 		Engine engine = Engine.getSingleton();
 		
 		ArrayList<User> seedUsers = new ArrayList<User>();
-//		seedUsers.add(engine.getUser(78199077L));		// Jiwon
-		seedUsers.add(engine.showUser(1188870223L));		// ChangUk
-//		seedUsers.add(engine.getUser(3182892457L));		// JeeIn
+		seedUsers.add(engine.showUser(78199077L));			// Jiwon
+//		seedUsers.add(engine.showUser(1188870223L));		// ChangUk
+//		seedUsers.add(engine.showUser(3182892457L));		// JeeIn
 		
 		for (User seedUser : seedUsers) {
 			EgoNetwork egoNetwork = new EgoNetwork(seedUser, 2);
