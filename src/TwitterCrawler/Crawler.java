@@ -18,7 +18,6 @@ public class Crawler {
 	private Queue<Long> queue;
 	
 	private ExecutorService exeService = null;
-	private Utils utils = new Utils();
 	
 	public Crawler(EgoNetwork egoNetwork) {
 		this.egoNetwork = egoNetwork;
@@ -30,7 +29,7 @@ public class Crawler {
 	public void run() {
 		if (egoNetwork.level() < 0) return;
 		
-		utils.printLog(egoNetwork, "TWITTER CRAWLING STARTED: " + egoNetwork.getSeedUser().getID() + " - " + utils.getCurrentTime(), false);
+		Utils.printLog(egoNetwork, "TWITTER CRAWLING STARTED: " + egoNetwork.getSeedUser().getID() + " - " + Utils.getCurrentTime(), false);
 		long crawling_start = System.currentTimeMillis();
 		
 		// Set visiting limit for exploring with BFS until at the given level
@@ -109,13 +108,17 @@ public class Crawler {
 		} catch (InterruptedException ie) {
 		}
 		
+		// Save user map into file
+		engine.saveUserMap();
+		engine.saveScreenNameMap();
+		
 		// Garbage collection
 		System.gc();
 		
 		// Print current memory usage
-		utils.printLog(egoNetwork, "### Current memory usage: " + utils.getCurMemoryUsage() + " MB", false);
-		utils.printLog(egoNetwork, "### Complete: Node(" + egoNetwork.getNodeCount() + "), Edge(" + egoNetwork.getEdgeCount() + ")", false);
-		utils.printLog(egoNetwork, "TWITTER CRAWLING FINISHED: " + egoNetwork.getSeedUser().getID(), false);
-		utils.printLog(egoNetwork, utils.getExecutingTime("Total executing time", (System.currentTimeMillis() - crawling_start) / 1000L), true);
+		Utils.printLog(egoNetwork, "### Current memory usage: " + Utils.getCurMemoryUsage() + " MB", false);
+		Utils.printLog(egoNetwork, "### Complete: Node(" + egoNetwork.getNodeCount() + "), Edge(" + egoNetwork.getEdgeCount() + ")", false);
+		Utils.printLog(egoNetwork, "TWITTER CRAWLING FINISHED: " + egoNetwork.getSeedUser().getID(), false);
+		Utils.printLog(egoNetwork, Utils.getExecutingTime("Total executing time", (System.currentTimeMillis() - crawling_start) / 1000L), true);
 	}
 }

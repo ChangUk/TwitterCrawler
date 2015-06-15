@@ -1,6 +1,5 @@
 package Common;
 
-import java.io.File;
 import java.util.ArrayList;
 
 import twitter4j.User;
@@ -21,7 +20,15 @@ public class TwitterNetwork {
 	protected final String lang;
 	
 	// Path for output file
-	protected String outputPath;
+	public String PATH_DATA;
+	public String PATH_DATA_FOLLOWING;
+	public String PATH_DATA_FOLLOWER;
+	public String PATH_DATA_FRIENDSHIP;
+	public String PATH_DATA_TIMELINE;
+	public String PATH_DATA_SHARE;
+	public String PATH_DATA_RETWEET;
+	public String PATH_DATA_MENTION;
+	public String PATH_DATA_FAVORITE;
 	
 	public TwitterNetwork(User seedUser) {
 		this.mSeedUser = new TwitterUser(seedUser.getId());
@@ -31,8 +38,7 @@ public class TwitterNetwork {
 	}
 	
 	public void init() {
-		this.outputPath = Settings.PATH_DATA + "global/";
-		makeDirectories();
+		this.PATH_DATA = Settings.PATH_DATA + "network/" + + mSeedUser.getID() + "/";
 	}
 	
 	public TwitterUser getSeedUser() {
@@ -83,49 +89,6 @@ public class TwitterNetwork {
 	}
 	
 	public String getOutputPath() {
-		return outputPath;
-	}
-	
-	public String getPathFollowingData() {
-		return this.outputPath + "following/";
-	}
-	
-	public String getPathFollowerData() {
-		return this.outputPath + "follower/";
-	}
-	
-	public String getPathFriendshipData() {
-		return this.outputPath + "friendship/";
-	}
-	
-	public String getPathTweetData() {
-		return this.outputPath + "timeline/";
-	}
-	
-	public String getPathShareData() {
-		return this.outputPath + "share/";
-	}
-	
-	public String getPathRetweetData() {
-		return this.outputPath + "retweet/";
-	}
-	
-	public String getPathMentionData() {
-		return this.outputPath + "mention/";
-	}
-	
-	public String getPathFavoriteData() {
-		return this.outputPath + "favorite/";
-	}
-	
-	public void makeDirectories() {
-		new File(getPathFollowingData()).mkdirs();
-		new File(getPathFollowerData()).mkdirs();
-		new File(getPathFriendshipData()).mkdirs();
-		new File(getPathTweetData()).mkdirs();
-		new File(getPathShareData()).mkdirs();
-		new File(getPathRetweetData()).mkdirs();
-		new File(getPathMentionData()).mkdirs();
-		new File(getPathFavoriteData()).mkdirs();
+		return PATH_DATA;
 	}
 }

@@ -22,6 +22,10 @@ public class AppManager {
 		return (mInstance != null) ? (mInstance) : (mInstance = new AppManager());
 	}
 	
+	/**
+	 * TwitterApps data format:
+	 * API_KEY \t API_SECRET \t ACCESS_KEY \t ACCESS_SECRET \n
+	 */
 	public AppManager() {
 		mAppQueue = new CircularQueue<TwitterApp>();
 		limitedEndpoints = new HashMap<String, ArrayList<TwitterApp>>();
@@ -30,6 +34,9 @@ public class AppManager {
 			System.out.println("### Applications loading failed!");
 			System.exit(0);
 		}
+		
+		if (mAppQueue.size() == 0)
+			System.exit(0);
 	}
 	
 	public boolean loadTwitterApps() {
@@ -51,10 +58,9 @@ public class AppManager {
 			br.close();
 			fr.close();
 		} catch (FileNotFoundException fnfe) {
-			fnfe.printStackTrace();
+			System.out.println("ERROR: No TwitterApp data - " + Settings.PATH_APPS);
 			return false;
 		} catch (IOException ioe) {
-			ioe.printStackTrace();
 			return false;
 		}
 		

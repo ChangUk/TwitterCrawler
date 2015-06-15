@@ -1,6 +1,12 @@
 package TwitterCrawler;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -38,22 +44,73 @@ public class Engine {
 	
 	public Engine() {
 		this.mAppManager = AppManager.getSingleton();
-		this.mUserMap = new HashMap<Long, TwitterUser>();
-		this.mScreenNameMap = new HashMap<String, Long>();
-		
-		loadExistingData();
+		loadUserMap();
+		loadScreenNameMap();
+		Settings.makeDirectories();
 	}
 	
 	public HashMap<Long, TwitterUser> getUserMap() {
 		return mUserMap;
 	}
 	
-	public HashMap<String, Long> getScreenNameMap() {
-		return mScreenNameMap;
+	public void saveUserMap() {
+		try {
+			File file = new File(Settings.PATH_DATA + "user_map");
+			FileOutputStream fos = new FileOutputStream(file);
+			ObjectOutputStream oos = new ObjectOutputStream(fos);
+			oos.writeObject(mUserMap);
+			oos.flush();
+			oos.close();
+			fos.close();
+		} catch (IOException e) {
+		}
 	}
 	
-	private void loadExistingData() {
-		// TODO: load existing file into memory
+	@SuppressWarnings("unchecked")
+	public void loadUserMap() {
+		try {
+			File file = new File(Settings.PATH_DATA + "user_map");
+			FileInputStream fis = new FileInputStream(file);
+			ObjectInputStream ois = new ObjectInputStream(fis);
+			this.mUserMap = (HashMap<Long, TwitterUser>) ois.readObject();
+			if (mUserMap.size() > 0)
+				System.out.println("### Existing user map size: " + mUserMap.size());
+			ois.close();
+			fis.close();
+		} catch (IOException e) {
+			this.mUserMap = new HashMap<Long, TwitterUser>();
+		} catch (ClassNotFoundException cnfe) {
+			this.mUserMap = new HashMap<Long, TwitterUser>();
+		}
+	}
+	
+	public void saveScreenNameMap() {
+		try {
+			File file = new File(Settings.PATH_DATA + "screen_name_map");
+			FileOutputStream fos = new FileOutputStream(file);
+			ObjectOutputStream oos = new ObjectOutputStream(fos);
+			oos.writeObject(mScreenNameMap);
+			oos.flush();
+			oos.close();
+			fos.close();
+		} catch (IOException e) {
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void loadScreenNameMap() {
+		try {
+			File file = new File(Settings.PATH_DATA + "screen_name_map");
+			FileInputStream fis = new FileInputStream(file);
+			ObjectInputStream ois = new ObjectInputStream(fis);
+			this.mScreenNameMap = (HashMap<String, Long>) ois.readObject();
+			ois.close();
+			fis.close();
+		} catch (IOException e) {
+			this.mScreenNameMap = new HashMap<String, Long>();
+		} catch (ClassNotFoundException cnfe) {
+			this.mScreenNameMap = new HashMap<String, Long>();
+		}
 	}
 	
 	/**
@@ -97,7 +154,7 @@ public class Engine {
 						break;
 					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
 					case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
-						new Utils().sleep(5000);				// Retry crawling 5 seconds later
+						Utils.sleep(5000);					// Retry crawling 5 seconds later
 						break;
 					}
 				}
@@ -107,7 +164,7 @@ public class Engine {
 		
 		if (writeFile == true) {
 			try {
-				PrintWriter writer = new PrintWriter(network.getPathFollowingData() + user.getID() + ".following", "utf-8");
+				PrintWriter writer = new PrintWriter(Settings.PATH_DATA_FOLLOWING + user.getID() + ".following", "utf-8");
 				for (long followingID : followingUsers)
 					writer.println(followingID);
 				writer.close();
@@ -162,7 +219,7 @@ public class Engine {
 						break;
 					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
 					case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
-						new Utils().sleep(5000);				// Retry crawling 5 seconds later
+						Utils.sleep(5000);						// Retry crawling 5 seconds later
 						break;
 					}
 				}
@@ -172,7 +229,7 @@ public class Engine {
 		
 		if (writeFile == true) {
 			try {
-				PrintWriter writer = new PrintWriter(network.getPathFollowerData() + user.getID() + ".follower", "utf-8");
+				PrintWriter writer = new PrintWriter(Settings.PATH_DATA_FOLLOWER + user.getID() + ".follower", "utf-8");
 				for (long followerID : followers)
 					writer.println(followerID);
 				writer.close();
@@ -208,12 +265,12 @@ public class Engine {
 		}
 		
 		// Filtering with some criteria and then set friendship list of a user
-		ArrayList<Long> friends = lookupUsers(network, intersection);
+		ArrayList<Long> friends = lookupUsers(network, intersection, true);
 		
 		// Write crawled data into file
 		if (writeFile == true) {
 			try {
-				PrintWriter writer = new PrintWriter(network.getPathFriendshipData() + user.getID() + ".friendship", "utf-8");
+				PrintWriter writer = new PrintWriter(Settings.PATH_DATA_FRIENDSHIP + user.getID() + ".friendship", "utf-8");
 				for (long friendID : friends)
 					writer.println(friendID);
 				writer.close();
@@ -231,9 +288,10 @@ public class Engine {
 	 * Filter invalid users out by checking them with some criteria.
 	 * @param network Target network to be crawled
 	 * @param candidatesIDs Test set
+	 * @param checkRequirements If true, check if the user satisfies requirements. Otherwise, check only if the user is protected.
 	 * @return Valid Users' IDs
 	 */
-	public ArrayList<Long> lookupUsers(TwitterNetwork network, ArrayList<Long> candidatesIDs) {
+	public ArrayList<Long> lookupUsers(TwitterNetwork network, ArrayList<Long> candidatesIDs, boolean checkRequirements) {
 		String endpoint = "/users/lookup";
 		ArrayList<Long> validUsersIDs = new ArrayList<Long>();
 		
@@ -265,8 +323,13 @@ public class Engine {
 					app = mAppManager.getAvailableApp(endpoint);
 					ResponseList<User> testset = app.twitter.lookupUsers(buffer);
 					for (User user : testset) {
-						if (isValidUser(network, user) == true)
-							validUsersIDs.add(user.getId());
+						if (checkRequirements == true) {
+							if (isValidUser(network, user) == true)			// Check requirements
+								validUsersIDs.add(user.getId());
+						} else {
+							if (isProtectedUser(user) == false)				// Check only if the user is protected
+								validUsersIDs.add(user.getId());
+						}
 					}
 					break;
 				} catch (TwitterException te) {
@@ -282,14 +345,19 @@ public class Engine {
 						case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
 							for (long id : buffer) {
 								User user = showUser(id);
-								if (isValidUser(network, user) == true)
-									validUsersIDs.add(id);
+								if (checkRequirements == true) {
+									if (isValidUser(network, user) == true)		// Check requirements
+										validUsersIDs.add(user.getId());
+								} else {
+									if (isProtectedUser(user) == false)			// Check only if the user is protected
+										validUsersIDs.add(user.getId());
+								}
 							}
 							retry = false;							// Do not retry anymore
 							break;
 						case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
 						case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
-							new Utils().sleep(5000);				// Retry crawling 5 seconds later
+							Utils.sleep(5000);						// Retry crawling 5 seconds later
 							break;
 						}
 					}
@@ -310,18 +378,43 @@ public class Engine {
 	public boolean isValidUser(TwitterNetwork network, User user) {
 		if (user == null) return false;
 		
-		if (Settings.isRequirementSatisfied(network, user, true)) {
+		if (Settings.isRequirementSatisfied(network, user, true) == true) {
 			mScreenNameMap.put(user.getScreenName(), user.getId());
 			return true;
 		} else {
-			if (mUserMap.containsKey(user.getId())) {
-				mUserMap.get(user.getId()).setInvalid();
+			TwitterUser twitterUser = mUserMap.get(user.getId());
+			if (twitterUser != null) {
+				twitterUser.setInvalid();
 			} else {
 				TwitterUser invalidUser = new TwitterUser(user.getId());
 				invalidUser.setInvalid();
 				mUserMap.put(user.getId(), invalidUser);
 			}
 			return false;
+		}
+	}
+	
+	/**
+	 * Check only if the user is protected user.
+	 * @param user Test user
+	 * @return true if the user is protected one, false otherwise.
+	 */
+	public boolean isProtectedUser(User user) {
+		if (user == null) return true;
+		
+		if (user.isProtected() == false) {
+			mScreenNameMap.put(user.getScreenName(), user.getId());
+			return false;
+		} else {
+			TwitterUser twitterUser = mUserMap.get(user.getId());
+			if (twitterUser != null) {
+				twitterUser.setInvalid();
+			} else {
+				TwitterUser invalidUser = new TwitterUser(user.getId());
+				invalidUser.setInvalid();
+				mUserMap.put(user.getId(), invalidUser);
+			}
+			return true;
 		}
 	}
 	
@@ -351,7 +444,7 @@ public class Engine {
 						return null;
 					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
 					case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
-						new Utils().sleep(5000);				// Retry crawling 5 seconds later
+						Utils.sleep(5000);						// Retry crawling 5 seconds later
 						break;
 					}
 				}
@@ -406,7 +499,7 @@ public class Engine {
 						break;
 					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
 					case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
-						new Utils().sleep(5000);				// Retry crawling 5 seconds later
+						Utils.sleep(5000);						// Retry crawling 5 seconds later
 						break;
 					}
 				}
@@ -417,9 +510,9 @@ public class Engine {
 		if (writeFile == true) {
 			try {
 				// Write tweet data
-				PrintWriter writer = new PrintWriter(network.getPathTweetData() + user.getID() + ".timeline", "utf-8");
+				PrintWriter writer = new PrintWriter(Settings.PATH_DATA_TIMELINE + user.getID() + ".timeline", "utf-8");
 				for (Status tweet : timeline)
-					writer.println(tweet.getId() + "\t" + tweet.getText());
+					writer.println(tweet.getCreatedAt().getTime() + "\t" + tweet.getId() + "\t" + tweet.getText());
 				writer.close();
 			} catch (UnsupportedEncodingException uee) {
 				uee.printStackTrace();
@@ -439,17 +532,17 @@ public class Engine {
 			
 			if (writeFile == true) {
 				try {
-					PrintWriter writer = new PrintWriter(network.getPathShareData() + user.getID() + ".share", "utf-8");
+					PrintWriter writer = new PrintWriter(Settings.PATH_DATA_SHARE + user.getID() + ".share", "utf-8");
 					for (HashMap.Entry<Long, String> entry : shareList.entrySet())
 						writer.println(entry.getValue() + "\t" + entry.getKey());
 					writer.close();
 					
-					writer = new PrintWriter(network.getPathRetweetData() + user.getID() + ".retweet", "utf-8");
+					writer = new PrintWriter(Settings.PATH_DATA_RETWEET + user.getID() + ".retweet", "utf-8");
 					for (Status retweet : retweetList)
-						writer.println(retweet.getRetweetedStatus().getUser().getId() + "\t" + retweet.getRetweetedStatus().getId() + "\t" + retweet.getText());
+						writer.println(retweet.getRetweetedStatus().getCreatedAt().getTime() + "\t" + retweet.getRetweetedStatus().getUser().getId() + "\t" + retweet.getRetweetedStatus().getId() + "\t" + retweet.getText());
 					writer.close();
 					
-					writer = new PrintWriter(network.getPathMentionData() + user.getID() + ".mention", "utf-8");
+					writer = new PrintWriter(Settings.PATH_DATA_MENTION + user.getID() + ".mention", "utf-8");
 					for (HashMap.Entry<Long, Integer> entry : mentionList.entrySet())
 						writer.println(entry.getKey() + "\t" + entry.getValue());
 					writer.close();
@@ -580,7 +673,7 @@ public class Engine {
 						break;
 					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
 					case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
-						new Utils().sleep(5000);				// Retry crawling 5 seconds later
+						Utils.sleep(5000);						// Retry crawling 5 seconds later
 						break;
 					}
 				}
@@ -590,7 +683,7 @@ public class Engine {
 		
 		if (writeFile == true) {
 			try {
-				PrintWriter writer = new PrintWriter(network.getPathFavoriteData() + user.getID() + ".favorite", "utf-8");
+				PrintWriter writer = new PrintWriter(Settings.PATH_DATA_FAVORITE + user.getID() + ".favorite", "utf-8");
 				for (Status favorite : favorites)
 					writer.println(favorite.getUser().getId() + "\t" + favorite.getId() + "\t" + favorite.getText());
 				writer.close();

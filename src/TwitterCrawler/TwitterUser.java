@@ -1,8 +1,11 @@
 package TwitterCrawler;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
-public class TwitterUser {
+public class TwitterUser implements Serializable {
+	private static final long serialVersionUID = 1L;
+	
 	private long id			= -1L;
 	private boolean isValid	= true;
 	private String lang		= null;

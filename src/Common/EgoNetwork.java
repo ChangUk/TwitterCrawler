@@ -14,8 +14,7 @@ public class EgoNetwork extends TwitterNetwork {
 	}
 	
 	public void init() {
-		this.outputPath = Settings.PATH_DATA + mSeedUser.getID() + "_" + level + "/";
-		makeDirectories();
+		this.PATH_DATA = Settings.PATH_DATA + "__ego_network/" + mSeedUser.getID() + "_" + level + "/";
 	}
 	
 	public int level() {
