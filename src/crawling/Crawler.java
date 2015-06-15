@@ -1,4 +1,4 @@
-package TwitterCrawler;
+package crawling;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -7,8 +7,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import Common.EgoNetwork;
-import Common.Utils;
+import tool.Utils;
+import main.EgoNetwork;
+import main.TwitterUser;
 
 public class Crawler {
 	private Engine engine = Engine.getSingleton();

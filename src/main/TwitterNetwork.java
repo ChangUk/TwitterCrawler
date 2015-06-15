@@ -1,10 +1,9 @@
-package Common;
+package main;
 
 import java.util.ArrayList;
 
+import crawling.Engine;
 import twitter4j.User;
-import TwitterCrawler.Engine;
-import TwitterCrawler.TwitterUser;
 
 public class TwitterNetwork {
 	// Seed user

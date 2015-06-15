@@ -1,4 +1,4 @@
-package TwitterCrawler;
+package crawling;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -11,7 +11,12 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.StringTokenizer;
 
+import main.Settings;
+import main.TwitterNetwork;
+import main.TwitterUser;
+import tool.Utils;
 import twitter4j.HttpResponseCode;
 import twitter4j.IDs;
 import twitter4j.Paging;
@@ -21,9 +26,6 @@ import twitter4j.TwitterException;
 import twitter4j.URLEntity;
 import twitter4j.User;
 import twitter4j.UserMentionEntity;
-import Common.Settings;
-import Common.TwitterNetwork;
-import Common.Utils;
 
 public class Engine {
 	private static Engine mInstance = null;
@@ -511,8 +513,9 @@ public class Engine {
 			try {
 				// Write tweet data
 				PrintWriter writer = new PrintWriter(Settings.PATH_DATA_TIMELINE + user.getID() + ".timeline", "utf-8");
-				for (Status tweet : timeline)
-					writer.println(tweet.getCreatedAt().getTime() + "\t" + tweet.getId() + "\t" + tweet.getText());
+				for (Status tweet : timeline) {
+					writer.println(tweet.getCreatedAt() + "\t" + tweet.getId() + "\t" + simpleTweetCleaning(tweet));
+				}
 				writer.close();
 			} catch (UnsupportedEncodingException uee) {
 				uee.printStackTrace();
@@ -539,7 +542,7 @@ public class Engine {
 					
 					writer = new PrintWriter(Settings.PATH_DATA_RETWEET + user.getID() + ".retweet", "utf-8");
 					for (Status retweet : retweetList)
-						writer.println(retweet.getRetweetedStatus().getCreatedAt().getTime() + "\t" + retweet.getRetweetedStatus().getUser().getId() + "\t" + retweet.getRetweetedStatus().getId() + "\t" + retweet.getText());
+						writer.println(retweet.getRetweetedStatus().getCreatedAt() + "\t" + retweet.getRetweetedStatus().getUser().getId() + "\t" + retweet.getRetweetedStatus().getId());
 					writer.close();
 					
 					writer = new PrintWriter(Settings.PATH_DATA_MENTION + user.getID() + ".mention", "utf-8");
@@ -685,7 +688,7 @@ public class Engine {
 			try {
 				PrintWriter writer = new PrintWriter(Settings.PATH_DATA_FAVORITE + user.getID() + ".favorite", "utf-8");
 				for (Status favorite : favorites)
-					writer.println(favorite.getUser().getId() + "\t" + favorite.getId() + "\t" + favorite.getText());
+					writer.println(favorite.getUser().getId() + "\t" + favorite.getId() + "\t" + simpleTweetCleaning(favorite));
 				writer.close();
 			} catch (UnsupportedEncodingException uee) {
 				uee.printStackTrace();
@@ -695,5 +698,34 @@ public class Engine {
 		}
 		
 		return favorites;
+	}
+	
+	/**
+	 * Get refined tweet message after simple text cleaning.
+	 * This task involves removing URLs and mentions marks.
+	 * @param tweet Tweet status
+	 * @return Refined tweet texts
+	 */
+	public String simpleTweetCleaning(Status tweet) {
+		StringTokenizer st = new StringTokenizer(tweet.getText(), " \t\r\n");
+		if (tweet.isRetweet())
+			st.nextToken();
+		ArrayList<String> wordList = new ArrayList<String>();
+		while (st.hasMoreTokens()) {
+			String token = st.nextToken();
+			if (token.startsWith("@") || token.startsWith("http://") || token.startsWith("https://"))
+				continue;
+			wordList.add(token.toLowerCase());
+		}
+		
+		if (wordList.isEmpty()) {
+			return new String("");
+		} else {
+			String result = new String(wordList.get(0));
+			wordList.remove(0);
+			for (String word : wordList)
+				result = result.concat(" " + word);
+			return result;
+		}
 	}
 }

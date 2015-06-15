@@ -1,4 +1,4 @@
-package TwitterCrawler;
+package crawling;
 
 import java.util.Map;
 import java.util.logging.Logger;

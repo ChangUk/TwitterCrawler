@@ -1,4 +1,4 @@
-package Common;
+package tool;
 
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -8,27 +8,33 @@ import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
+import main.Settings;
+import main.TwitterNetwork;
+
 public class Utils {
 	// Log message
 	private static String msgLog = new String();
 	
-	// REGULAR EXPRESSIONS (LATIN)
+	// Regular expressions (Latin)
 	public static final String REGEX_LATIN_BASIC = "\\p{InBasic_Latin}";				//	"A-Za-z";
 	public static final String REGEX_LATIN_SUPPLEMENT = "\\p{InLatin-1_Supplement}";	//	"À-ÖÙ-öù-ÿ";
 	public static final String REGEX_LATIN_EXTENDED_A = "\\p{InLatin_Extended-A}";		//	"Ā-ſ";
 	public static final String REGEX_LATIN_EXTENDED_B = "\\p{InLatin_Extended-B}";		//	"ƀ-ɏ";
 	public static final String REGEX_LATIN = "\\p{Latin}";								//	REGEX_LATIN_BASIC + REGEX_LATIN_SUPPLEMENT + REGEX_LATIN_EXTENDED_A + REGEX_LATIN_EXTENDED_B;
 	
-	// REGULAR EXPRESSIONS (KOREAN)
+	// Regular expressions (Korean)
 	public static final String REGEX_HANGUL_JAMO = "\\p{InHangul_Jamo}";				//	"ㄱ-ㅎㅏ-ㅣ";
 	public static final String REGEX_HANGUL_SYLLABLES = "\\p{InHangul_Syllables}";		//	"가-힣";
 	public static final String REGEX_HANGUL = "\\p{Hangul}";							//	REGEX_HANGUL_JAMO + REGEX_HANGUL_SYLLABLES;
 	
-	// REGULAR EXPRESSIONS (OVERALL)
+	// Regular expressions (Text)
 	public static final String REGEX_SCRIPTS = REGEX_LATIN + REGEX_HANGUL;
 	
-	// REGULAR EXPRESSIONS (SYMBOLS)
+	// Regular expressions (Symbol)
 	public static final String REGEX_SYMBOLS = "\\P{L}";								//	"!-/,:-?";
+	
+	// Regular expressions (Number)
+	public static final String REGEX_NUMBERS = "\\p{N}";								// "0-9";
 	
 	/**
 	 * Check if the given word is Hangul word or not.
@@ -38,7 +44,7 @@ public class Utils {
 	public static boolean isHangul(String word) {
 		if (word.length() == 0)
 			return false;
-		return word.matches("^[" + REGEX_HANGUL + "]*$");
+		return word.matches("^[" + REGEX_HANGUL + "]+$");
 	}
 	
 	/**
@@ -49,18 +55,30 @@ public class Utils {
 	public static boolean isHangulSyllables(String word) {
 		if (word.length() == 0)
 			return false;
-		return word.matches("^[" + REGEX_HANGUL_SYLLABLES + "]*$");
+		return word.matches("^[" + REGEX_HANGUL_SYLLABLES + "]+$");
 	}
 	
 	/**
-	 * Check if the given word is Hangul Chonjiin style or not.
+	 * Check if the given word contains both Hangul and English.
 	 * @param word
-	 * @return True if the given word is Hangul Chonjiin style.
+	 * @return True if the given word contains English.
 	 */
-	public static boolean isHangulChunjiin(String word) {
+	public static boolean isHangulWithEnglish(String word) {
 		if (word.length() == 0)
 			return false;
-		return word.matches("^[" + REGEX_HANGUL + "ㆍ：]*$");
+		return word.matches("^[" + REGEX_HANGUL_SYLLABLES + "]*[" + REGEX_LATIN_BASIC + "]+[" + REGEX_HANGUL_SYLLABLES + "]*$");
+	}
+	
+	public static boolean isTextWithNumbers(String word) {
+		if (word.length() == 0)
+			return false;
+		return word.matches("^[" + REGEX_HANGUL_SYLLABLES + REGEX_LATIN_BASIC + "]+[" + REGEX_NUMBERS + "]+[" + REGEX_HANGUL_SYLLABLES + REGEX_LATIN_BASIC + "]+$");
+	}
+	
+	public static boolean isTextWithSymbols(String word) {
+		if (word.length() == 0)
+			return false;
+		return word.matches("^[" + REGEX_HANGUL_SYLLABLES + REGEX_LATIN_BASIC + "]+[" + REGEX_SYMBOLS + "]+[" + REGEX_HANGUL_SYLLABLES + REGEX_LATIN_BASIC + "]+$");
 	}
 	
 	/**
@@ -71,7 +89,7 @@ public class Utils {
 	public static boolean isEnglish(String word) {
 		if (word.length() == 0)
 			return false;
-		return word.matches("^[" + REGEX_LATIN_BASIC + "]*$");
+		return word.matches("^[" + REGEX_LATIN_BASIC + "]+$");
 	}
 	
 	/**

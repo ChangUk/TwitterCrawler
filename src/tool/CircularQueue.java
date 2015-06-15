@@ -1,4 +1,4 @@
-package Common;
+package tool;
 
 import java.util.ArrayList;
 import java.util.Iterator;

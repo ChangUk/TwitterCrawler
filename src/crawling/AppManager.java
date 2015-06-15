@@ -1,4 +1,4 @@
-package TwitterCrawler;
+package crawling;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Logger;
 
-import Common.CircularQueue;
-import Common.Settings;
+import tool.CircularQueue;
+import main.Settings;
 
 public class AppManager {
 	private static AppManager mInstance = null;

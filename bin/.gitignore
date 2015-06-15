@@ -1,4 +1,4 @@
-/Common/
-/DataPreprocessing/
-/TwitterCrawler/
-/TwitterMiner.class
+/crawling/
+/datamining/
+/main/
+/tool/

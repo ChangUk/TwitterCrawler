@@ -1,4 +1,4 @@
-package Common;
+package main;
 
 import twitter4j.User;
 
