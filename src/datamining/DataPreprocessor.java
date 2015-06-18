@@ -10,7 +10,7 @@ public class DataPreprocessor {
 		
 	}
 	
-	public String getRefinedTweet(String tweet) {
+	public String refineTweet(String tweet) {
 		ArrayList<String> wordList = new ArrayList<String>();
 		StringTokenizer st = new StringTokenizer(tweet, " \t\r\n");
 		while (st.hasMoreTokens()) {

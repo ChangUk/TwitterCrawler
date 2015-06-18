@@ -2,19 +2,15 @@ package crawling;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
-import java.util.StringTokenizer;
 
 import main.Settings;
-import main.TwitterNetwork;
 import main.TwitterUser;
 import tool.Utils;
 import twitter4j.HttpResponseCode;
@@ -38,17 +34,15 @@ public class Engine {
 	private AppManager mAppManager = null;
 	private TwitterApp app;
 	
-	// <Crawled user ID - TwitterUser instance> pairs
+	/**
+	 * <Crawled user ID - TwitterUser instance> pairs
+	 * This hash map contains users(nodes) which have ever been looked up at least once.
+	 */
 	private HashMap<Long, TwitterUser> mUserMap;
-	
-	// <Screen name - Twitter user ID> pairs
-	private HashMap<String, Long> mScreenNameMap;		// Includes only valid users
 	
 	public Engine() {
 		this.mAppManager = AppManager.getSingleton();
 		loadUserMap();
-		loadScreenNameMap();
-		Settings.makeDirectories();
 	}
 	
 	public HashMap<Long, TwitterUser> getUserMap() {
@@ -86,46 +80,13 @@ public class Engine {
 		}
 	}
 	
-	public void saveScreenNameMap() {
-		try {
-			File file = new File(Settings.PATH_DATA + "screen_name_map");
-			FileOutputStream fos = new FileOutputStream(file);
-			ObjectOutputStream oos = new ObjectOutputStream(fos);
-			oos.writeObject(mScreenNameMap);
-			oos.flush();
-			oos.close();
-			fos.close();
-		} catch (IOException e) {
-		}
-	}
-	
-	@SuppressWarnings("unchecked")
-	public void loadScreenNameMap() {
-		try {
-			File file = new File(Settings.PATH_DATA + "screen_name_map");
-			FileInputStream fis = new FileInputStream(file);
-			ObjectInputStream ois = new ObjectInputStream(fis);
-			this.mScreenNameMap = (HashMap<String, Long>) ois.readObject();
-			ois.close();
-			fis.close();
-		} catch (IOException e) {
-			this.mScreenNameMap = new HashMap<String, Long>();
-		} catch (ClassNotFoundException cnfe) {
-			this.mScreenNameMap = new HashMap<String, Long>();
-		}
-	}
-	
 	/**
 	 * The following users' IDs are obtained by Twitter REST API.
-	 * @param network Target network to be crawled
 	 * @param user User that data is loaded into.
 	 * @param maxCount Maximum number of record to be obtained
-	 * @param writeFile Set <b>true</b> if you want to save data as a file.
 	 * @return Following users' IDs
 	 */
-	public ArrayList<Long> getFollowings(TwitterNetwork network, TwitterUser user, int maxCount, boolean writeFile) {
-		if (user.isValid() == false) return null;
-		
+	public ArrayList<Long> getFollowings(TwitterUser user, int maxCount) {
 		String endpoint = "/friends/ids";
 		ArrayList<Long> followingUsers = new ArrayList<Long>();
 		
@@ -144,14 +105,13 @@ public class Engine {
 				boolean retry = true;
 				if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
 					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
-					app.printRateLimitStatus(endpoint);
 				} else {
 					switch (te.getStatusCode()) {
 					default:									// Unknown exception occurs
 						te.printStackTrace();
 					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
 					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
-						user.setInvalid();
+						user.setProtected();
 						retry = false;							// Do not retry anymore
 						break;
 					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
@@ -164,33 +124,16 @@ public class Engine {
 			}
 		}
 		
-		if (writeFile == true) {
-			try {
-				PrintWriter writer = new PrintWriter(Settings.PATH_DATA_FOLLOWING + user.getID() + ".following", "utf-8");
-				for (long followingID : followingUsers)
-					writer.println(followingID);
-				writer.close();
-			} catch (UnsupportedEncodingException uee) {
-				uee.printStackTrace();
-			} catch (FileNotFoundException fnfe) {
-				fnfe.printStackTrace();
-			}
-		}
-		
 		return followingUsers;
 	}
 	
 	/**
 	 * The followers' IDs are obtained by Twitter REST API.
-	 * @param network Target network to be crawled
 	 * @param user User that data is loaded into.
 	 * @param maxCount Maximum number of record to be obtained
-	 * @param writeFile Set <b>true</b> if you want to save data as a file.
 	 * @return Followers' IDs
 	 */
-	public ArrayList<Long> getFollowers(TwitterNetwork network, TwitterUser user, int maxCount, boolean writeFile) {
-		if (user.isValid() == false) return null;
-		
+	public ArrayList<Long> getFollowers(TwitterUser user, int maxCount) {
 		String endpoint = "/followers/ids";
 		ArrayList<Long> followers = new ArrayList<Long>();
 		
@@ -209,14 +152,13 @@ public class Engine {
 				boolean retry = true;
 				if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
 					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
-					app.printRateLimitStatus(endpoint);
 				} else {
 					switch (te.getStatusCode()) {
 					default:									// Unknown exception occurs
 						te.printStackTrace();
 					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
 					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
-						user.setInvalid();
+						user.setProtected();
 						retry = false;							// Do not retry anymore
 						break;
 					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
@@ -229,132 +171,77 @@ public class Engine {
 			}
 		}
 		
-		if (writeFile == true) {
-			try {
-				PrintWriter writer = new PrintWriter(Settings.PATH_DATA_FOLLOWER + user.getID() + ".follower", "utf-8");
-				for (long followerID : followers)
-					writer.println(followerID);
-				writer.close();
-			} catch (UnsupportedEncodingException uee) {
-				uee.printStackTrace();
-			} catch (FileNotFoundException fnfe) {
-				fnfe.printStackTrace();
-			}
-		}
-		
 		return followers;
 	}
 	
 	/**
-	 * Get friendship between followings ID list and followers ID list,
-	 * and then load it into target user's friendship list.
-	 * To judge friendship between users, they should mutually follow each other.
-	 * The <b>reason why finding friendship should be preceded</b> is to reduce API call count.
-	 * @param network Target network to be crawled
-	 * @param user User that data is loaded into.
-	 * @param lang A filtering option by language
-	 * @param writeFile Set <b>true</b> if you want to save data as a file.
+	 * Get friendship from intersection between followings ID list and followers ID list.
+	 * This task involves looking up process.
+	 * @param followings
+	 * @param followers
+	 * @return Friendship ID list
 	 */
-	public ArrayList<Long> getFriendship(TwitterNetwork network, TwitterUser user, boolean writeFile) {
-		if (user.isValid() == false) return null;
-		if (user.getFollowerList() == null || user.getFollowingList() == null) return null;
+	public ArrayList<Long> getFriendship(ArrayList<Long> followings, ArrayList<Long> followers) {
+		if (followings == null || followers == null) return null;
 		
 		// Find intersection between followers and followees
 		ArrayList<Long> intersection = new ArrayList<Long>();
-		for (long follower : user.getFollowerList()) {
-			if (user.getFollowingList().contains(follower))
+		for (long follower : followers) {
+			if (followings.contains(follower))
 				intersection.add(follower);
 		}
 		
 		// Filtering with some criteria and then set friendship list of a user
-		ArrayList<Long> friends = lookupUsers(network, intersection, true);
-		
-		// Write crawled data into file
-		if (writeFile == true) {
-			try {
-				PrintWriter writer = new PrintWriter(Settings.PATH_DATA_FRIENDSHIP + user.getID() + ".friendship", "utf-8");
-				for (long friendID : friends)
-					writer.println(friendID);
-				writer.close();
-			} catch (UnsupportedEncodingException uee) {
-				uee.printStackTrace();
-			} catch (FileNotFoundException fnfe) {
-				fnfe.printStackTrace();
-			}
-		}
-		
-		return friends;
+		ArrayList<User> users = lookupUsers(intersection);
+		return testUserValidity(users);
 	}
 	
 	/**
-	 * Filter invalid users out by checking them with some criteria.
-	 * @param network Target network to be crawled
-	 * @param candidatesIDs Test set
-	 * @param checkRequirements If true, check if the user satisfies requirements. Otherwise, check only if the user is protected.
-	 * @return Valid Users' IDs
+	 * Look up user list.
+	 * If a requested user is unknown, suspended, or deleted, then that user will not be returned in the results list.
+	 * If none of your lookup criteria can be satisfied by returning a user object, a HTTP 404 will be thrown.
+	 * @param userList Users to be looked up
+	 * @return User instances
 	 */
-	public ArrayList<Long> lookupUsers(TwitterNetwork network, ArrayList<Long> candidatesIDs, boolean checkRequirements) {
+	public ArrayList<User> lookupUsers(ArrayList<Long> userList) {
 		String endpoint = "/users/lookup";
-		ArrayList<Long> validUsersIDs = new ArrayList<Long>();
+		ArrayList<User> users = new ArrayList<User>();
 		
 		int cursor = 0;
-		while (cursor < candidatesIDs.size()) {
+		while (cursor < userList.size()) {
 			// Make buffer space and fill it with IDs
 			ArrayList<Long> bufferList = new ArrayList<Long>();
-			for (int i = cursor; i < candidatesIDs.size() && bufferList.size() < 100; i++) {
-				long userID = candidatesIDs.get(i);
-				TwitterUser user = mUserMap.get(userID);
-				if (user == null) {
+			for (int i = cursor; i < userList.size() && bufferList.size() < 100; i++) {
+				long userID = userList.get(i);
+				// CHeck if the user is already obtained earlier
+				if (mUserMap.containsKey(userID) == false)
 					bufferList.add(userID);
-				} else {
-					if (user.isValid() == true)
-						validUsersIDs.add(userID);
-				}
 				cursor++;
 			}
 			if (bufferList.isEmpty()) break;
-			
-			// Buffer List -> Buffer Array
-			long[] buffer = new long[bufferList.size()];
-			for (int i = 0; i < buffer.length; i++)
-				buffer[i] = bufferList.get(i);
+			long[] buffer = Utils.getArray(bufferList);
 			
 			// Lookup buffer
 			while (true) {
 				try {
 					app = mAppManager.getAvailableApp(endpoint);
 					ResponseList<User> testset = app.twitter.lookupUsers(buffer);
-					for (User user : testset) {
-						if (checkRequirements == true) {
-							if (isValidUser(network, user) == true)			// Check requirements
-								validUsersIDs.add(user.getId());
-						} else {
-							if (isProtectedUser(user) == false)				// Check only if the user is protected
-								validUsersIDs.add(user.getId());
-						}
-					}
+					for (User user : testset)
+						users.add(user);
 					break;
 				} catch (TwitterException te) {
 					boolean retry = true;
 					if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
 						mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
-						app.printRateLimitStatus(endpoint);
 					} else {
 						switch (te.getStatusCode()) {
 						default:									// Unknown exception occurs
 							te.printStackTrace();
 						case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
 						case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
-							for (long id : buffer) {
-								User user = showUser(id);
-								if (checkRequirements == true) {
-									if (isValidUser(network, user) == true)		// Check requirements
-										validUsersIDs.add(user.getId());
-								} else {
-									if (isProtectedUser(user) == false)			// Check only if the user is protected
-										validUsersIDs.add(user.getId());
-								}
-							}
+							System.out.println("Lookup error: " + te.getStatusCode() + ", buffer: " + buffer);
+							for (long id : buffer)
+								users.add(showUser(id));
 							retry = false;							// Do not retry anymore
 							break;
 						case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
@@ -368,56 +255,31 @@ public class Engine {
 			}
 		}
 		
+		return users;
+	}
+	
+	/**
+	 * Filter invalid users out by some criteria.
+	 * @param users Test set
+	 * @return Valid users' IDs
+	 */
+	public ArrayList<Long> testUserValidity(ArrayList<User> users) {
+		ArrayList<Long> validUsersIDs = new ArrayList<Long>();
+		for (User user : users) {
+			// Get TwitterUser instance from user map or create new one.
+			TwitterUser twitterUser = mUserMap.get(user.getId());
+			if (twitterUser == null) {
+				twitterUser = new TwitterUser(user);
+				mUserMap.put(user.getId(), twitterUser);
+			}
+			
+			// Test if the user is valid.
+			if (Settings.isValidUser(user))
+				validUsersIDs.add(user.getId());
+			else
+				twitterUser.setProtected();
+		}
 		return validUsersIDs;
-	}
-	
-	/**
-	 * Check if the user is valid and then register his validity as a global information.
-	 * @param network Target network to be crawled
-	 * @param user Test user
-	 * @return true if the user is valid, false otherwise.
-	 */
-	public boolean isValidUser(TwitterNetwork network, User user) {
-		if (user == null) return false;
-		
-		if (Settings.isRequirementSatisfied(network, user, true) == true) {
-			mScreenNameMap.put(user.getScreenName(), user.getId());
-			return true;
-		} else {
-			TwitterUser twitterUser = mUserMap.get(user.getId());
-			if (twitterUser != null) {
-				twitterUser.setInvalid();
-			} else {
-				TwitterUser invalidUser = new TwitterUser(user.getId());
-				invalidUser.setInvalid();
-				mUserMap.put(user.getId(), invalidUser);
-			}
-			return false;
-		}
-	}
-	
-	/**
-	 * Check only if the user is protected user.
-	 * @param user Test user
-	 * @return true if the user is protected one, false otherwise.
-	 */
-	public boolean isProtectedUser(User user) {
-		if (user == null) return true;
-		
-		if (user.isProtected() == false) {
-			mScreenNameMap.put(user.getScreenName(), user.getId());
-			return false;
-		} else {
-			TwitterUser twitterUser = mUserMap.get(user.getId());
-			if (twitterUser != null) {
-				twitterUser.setInvalid();
-			} else {
-				TwitterUser invalidUser = new TwitterUser(user.getId());
-				invalidUser.setInvalid();
-				mUserMap.put(user.getId(), invalidUser);
-			}
-			return true;
-		}
 	}
 	
 	/**
@@ -436,7 +298,6 @@ public class Engine {
 			} catch (TwitterException te) {
 				if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
 					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
-					app.printRateLimitStatus(endpoint);
 				} else {
 					switch (te.getStatusCode()) {
 					default:									// Unknown exception occurs
@@ -461,18 +322,10 @@ public class Engine {
 	 * Requests for more than the limit will result in a reply with a status code of 200
 	 * and an empty result in the format requested.
 	 * To ensure performance of the site, this artificial limit is temporarily in place.
-	 * @param network Target network to be crawled
 	 * @param user Target user
-	 * @param writeFile
 	 * @return Timeline of the given user
 	 */
-	public ArrayList<Status> getTimeline(TwitterNetwork network, TwitterUser user, boolean writeFile) {
-		return getTimeline(network, user, true, writeFile);
-	}
-	
-	public ArrayList<Status> getTimeline(TwitterNetwork network, TwitterUser user, boolean getSubInfo, boolean writeFile) {
-		if (user.isValid() == false) return null;
-		
+	public ArrayList<Status> getTimeline(TwitterUser user) {
 		String endpoint = "/statuses/user_timeline";
 		ArrayList<Status> timeline = new ArrayList<Status>();
 		
@@ -489,14 +342,13 @@ public class Engine {
 				boolean retry = true;
 				if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
 					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
-					app.printRateLimitStatus(endpoint);
 				} else {
 					switch (te.getStatusCode()) {
 					default:									// Unknown exception occurs
 						te.printStackTrace();
 					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
 					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
-						user.setInvalid();
+						user.setProtected();
 						retry = false;							// Do not retry anymore
 						break;
 					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
@@ -509,79 +361,30 @@ public class Engine {
 			}
 		}
 		
-		if (writeFile == true) {
-			try {
-				// Write tweet data
-				PrintWriter writer = new PrintWriter(Settings.PATH_DATA_TIMELINE + user.getID() + ".timeline", "utf-8");
-				for (Status tweet : timeline) {
-					writer.println(tweet.getCreatedAt() + "\t" + tweet.getId() + "\t" + simpleTweetCleaning(tweet));
-				}
-				writer.close();
-			} catch (UnsupportedEncodingException uee) {
-				uee.printStackTrace();
-			} catch (FileNotFoundException fnfe) {
-				fnfe.printStackTrace();
-			}
-		}
-		
-		/**
-		 * A set of tweet messages of timeline involve user's shared tweets, mention, and retweets.
-		 * Extract shared tweets, retweet, and mention data from the obtained timeline in the above.
-		 */
-		if (getSubInfo == true) {
-			HashMap<Long, String> shareList = getSharedTweets(user.getID(), timeline);
-			ArrayList<Status> retweetList = getRetweets(user.getID(), timeline);
-			HashMap<Long, Integer> mentionList = getMentionCount(user.getID(), timeline);
-			
-			if (writeFile == true) {
-				try {
-					PrintWriter writer = new PrintWriter(Settings.PATH_DATA_SHARE + user.getID() + ".share", "utf-8");
-					for (HashMap.Entry<Long, String> entry : shareList.entrySet())
-						writer.println(entry.getValue() + "\t" + entry.getKey());
-					writer.close();
-					
-					writer = new PrintWriter(Settings.PATH_DATA_RETWEET + user.getID() + ".retweet", "utf-8");
-					for (Status retweet : retweetList)
-						writer.println(retweet.getRetweetedStatus().getCreatedAt() + "\t" + retweet.getRetweetedStatus().getUser().getId() + "\t" + retweet.getRetweetedStatus().getId());
-					writer.close();
-					
-					writer = new PrintWriter(Settings.PATH_DATA_MENTION + user.getID() + ".mention", "utf-8");
-					for (HashMap.Entry<Long, Integer> entry : mentionList.entrySet())
-						writer.println(entry.getKey() + "\t" + entry.getValue());
-					writer.close();
-				} catch (UnsupportedEncodingException uee) {
-					uee.printStackTrace();
-				} catch (FileNotFoundException fnfe) {
-					fnfe.printStackTrace();
-				}
-			}
-		}
-		
 		return timeline;
 	}
 	
 	/**
 	 * Get shared tweet ID and its author's name pairs from the given timeline.
-	 * @param userID
 	 * @param timeline
 	 * @return <Shared tweet ID - author name> pairs
 	 */
-	public HashMap<Long, String> getSharedTweets(long userID, ArrayList<Status> timeline) {
-		HashMap<Long, String> shareList = new HashMap<Long, String>();
+	public ArrayList<Long> getSharedTweets(ArrayList<Status> timeline) {
+		ArrayList<Long> shareList = new ArrayList<Long>();
 		for (Status tweet : timeline) {
+			if (tweet.isRetweet()) continue;
+			
 			// Extract user's share history
 			URLEntity[] urlEntities = tweet.getURLEntities();
 			for (int i = 0; i < urlEntities.length; i++) {
 				String expandedURL = urlEntities[i].getExpandedURL();
-				
-				if (expandedURL.startsWith("https://twitter.com/")) {
+				if (expandedURL.startsWith("https://twitter.com/") || expandedURL.startsWith("http://twitter.com/")) {
 					String tokens[] = expandedURL.split("/");
 					
 					// Check if the status is shared from another Twitter user's timeline
 					for (int j = 0; j < tokens.length - 1; j++) {
 						try {
 							if (tokens[j].equals("status") == true) {
-								String targetUser = tokens[j - 1];
 								String targetTweet = tokens[j + 1];
 								Long targetTweetID = null;
 								for (int c = 1; c <= targetTweet.length(); c++) {
@@ -597,7 +400,7 @@ public class Engine {
 								}
 								
 								if (targetTweetID != null)
-									shareList.put(targetTweetID, targetUser);
+									shareList.add(targetTweetID);
 								break;
 							}
 						} catch (Exception e) {
@@ -610,44 +413,39 @@ public class Engine {
 		return shareList;
 	}
 	
-	public ArrayList<Status> getRetweets(long userID, ArrayList<Status> timeline) {
+	public ArrayList<Status> getRetweets(ArrayList<Status> timeline) {
 		ArrayList<Status> retweetList = new ArrayList<Status>();
 		for (Status tweet : timeline) {
-			if (tweet.isRetweet() == true && userID != tweet.getId())
-				retweetList.add(tweet);
+			if (tweet.isRetweet())
+				retweetList.add(tweet.getRetweetedStatus());
 		}
 		return retweetList;
 	}
 	
-	public HashMap<Long, Integer> getMentionCount(long userID, ArrayList<Status> timeline) {
-		HashMap<Long, Integer> mentionList = new HashMap<Long, Integer>();
+	public HashMap<Long, ArrayList<Date>> getMentionHistory(long userID, ArrayList<Status> timeline) {
+		HashMap<Long, ArrayList<Date>> mentionHistory = new HashMap<Long, ArrayList<Date>>();
 		for (Status tweet : timeline) {
 			UserMentionEntity[] mentionEntities = tweet.getUserMentionEntities();
 			for (int i = 0; i < mentionEntities.length; i++) {
 				Long targetUserID = mentionEntities[i].getId();
 				if (userID != targetUserID) {
-					if (mentionList.containsKey(targetUserID)) {
-						int cnt = mentionList.get(targetUserID);
-						mentionList.put(targetUserID, cnt + 1);
-					} else {
-						mentionList.put(targetUserID, 1);
-					}
+					ArrayList<Date> mentionedDates = mentionHistory.get(targetUserID);
+					if (mentionedDates == null)
+						mentionedDates = new ArrayList<Date>();
+					mentionedDates.add(tweet.getCreatedAt());
+					mentionHistory.put(targetUserID, mentionedDates);
 				}
 			}
 		}
-		return mentionList;
+		return mentionHistory;
 	}
 	
 	/**
 	 * Get favorites data of a given user using Twitter API.
-	 * @param network Target network to be crawled
 	 * @param user Target user
-	 * @param writeFile
 	 * @return Favorite tweet list of target user
 	 */
-	public ArrayList<Status> getFavorites(TwitterNetwork network, TwitterUser user, boolean writeFile) {
-		if (user.isValid() == false) return null;
-		
+	public ArrayList<Status> getFavorites(TwitterUser user) {
 		String endpoint = "/favorites/list";
 		ArrayList<Status> favorites = new ArrayList<Status>();
 		
@@ -664,14 +462,13 @@ public class Engine {
 				boolean retry = true;
 				if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
 					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
-					app.printRateLimitStatus(endpoint);
 				} else {
 					switch (te.getStatusCode()) {
 					default:									// Unknown exception occurs
 						te.printStackTrace();
 					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
 					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
-						user.setInvalid();
+						user.setProtected();
 						retry = false;							// Do not retry anymore
 						break;
 					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
@@ -684,48 +481,6 @@ public class Engine {
 			}
 		}
 		
-		if (writeFile == true) {
-			try {
-				PrintWriter writer = new PrintWriter(Settings.PATH_DATA_FAVORITE + user.getID() + ".favorite", "utf-8");
-				for (Status favorite : favorites)
-					writer.println(favorite.getUser().getId() + "\t" + favorite.getId() + "\t" + simpleTweetCleaning(favorite));
-				writer.close();
-			} catch (UnsupportedEncodingException uee) {
-				uee.printStackTrace();
-			} catch (FileNotFoundException fnfe) {
-				fnfe.printStackTrace();
-			}
-		}
-		
 		return favorites;
-	}
-	
-	/**
-	 * Get refined tweet message after simple text cleaning.
-	 * This task involves removing URLs and mentions marks.
-	 * @param tweet Tweet status
-	 * @return Refined tweet texts
-	 */
-	public String simpleTweetCleaning(Status tweet) {
-		StringTokenizer st = new StringTokenizer(tweet.getText(), " \t\r\n");
-		if (tweet.isRetweet())
-			st.nextToken();
-		ArrayList<String> wordList = new ArrayList<String>();
-		while (st.hasMoreTokens()) {
-			String token = st.nextToken();
-			if (token.startsWith("@") || token.startsWith("http://") || token.startsWith("https://"))
-				continue;
-			wordList.add(token.toLowerCase());
-		}
-		
-		if (wordList.isEmpty()) {
-			return new String("");
-		} else {
-			String result = new String(wordList.get(0));
-			wordList.remove(0);
-			for (String word : wordList)
-				result = result.concat(" " + word);
-			return result;
-		}
 	}
 }

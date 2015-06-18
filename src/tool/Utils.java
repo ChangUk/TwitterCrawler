@@ -6,14 +6,80 @@ import java.io.UnsupportedEncodingException;
 import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.StringTokenizer;
 
+import twitter4j.Status;
 import main.Settings;
-import main.TwitterNetwork;
 
 public class Utils {
-	// Log message
-	private static String msgLog = new String();
+	/**
+	 * Convert ArrayList type into array[] type.
+	 * @param list ArrayList type data
+	 * @return Array type of data
+	 */
+	public static long[] getArray(ArrayList<Long> list) {
+		long[] array = new long[list.size()];
+		for (int i = 0; i < array.length; i++)
+			array[i] = list.get(i);
+		return array;
+	}
+	
+	/**
+	 * Wait the given period of time
+	 * @param milliseconds Waiting time
+	 */
+	public static void sleep(long milliseconds) {
+		try {
+			Thread.sleep(milliseconds);
+		} catch (InterruptedException ie) {
+		}
+	}
+	
+	/**
+	 * Get refined tweet message after simple text cleaning.
+	 * This task involves removing URLs and mentions marks.
+	 * @param tweet Tweet status
+	 * @return Refined tweet texts
+	 */
+	public static String simpleTweetCleaning(Status tweet) {
+		StringTokenizer st = new StringTokenizer(tweet.getText(), " \t\r\n");
+		if (tweet.isRetweet())
+			st.nextToken();
+		ArrayList<String> wordList = new ArrayList<String>();
+		while (st.hasMoreTokens()) {
+			String token = st.nextToken();
+			if (token.startsWith("@") || token.startsWith("http://") || token.startsWith("https://"))
+				continue;
+			wordList.add(token.toLowerCase());
+		}
+		
+		if (wordList.isEmpty()) {
+			return new String("");
+		} else {
+			String result = new String(wordList.get(0));
+			wordList.remove(0);
+			for (String word : wordList)
+				result = result.concat(" " + word);
+			return result;
+		}
+	}
+	
+	/**
+	 * Check if the tweet contains mentioning.
+	 * @param tweet Target tweet to be tested
+	 * @return True if the tweet contains mentioning in its text, false otherwise.
+	 */
+	public static boolean containsMention(Status tweet) {
+		StringTokenizer st = new StringTokenizer(tweet.getText(), " \t\r\n");
+		while (st.hasMoreTokens()) {
+			String token = st.nextToken();
+			if (token.startsWith("@"))
+				return true;
+		}
+		return false;
+	}
 	
 	// Regular expressions (Latin)
 	public static final String REGEX_LATIN_BASIC = "\\p{InBasic_Latin}";				//	"A-Za-z";
@@ -115,17 +181,6 @@ public class Utils {
 	}
 	
 	/**
-	 * Wait the given period of time
-	 * @param milliseconds Waiting time
-	 */
-	public static void sleep(long milliseconds) {
-		try {
-			Thread.sleep(milliseconds);
-		} catch (InterruptedException ie) {
-		}
-	}
-	
-	/**
 	 * Get current memory usage
 	 * @return Memory usage
 	 */
@@ -163,7 +218,8 @@ public class Utils {
 	 * @param log log message
 	 * @param flush If true, the concatenated log texts are saved into a log file.
 	 */
-	public static void printLog(TwitterNetwork network, String log, boolean flush) {
+	private static String msgLog = new String();
+	public static void printLog(String log, boolean flush) {
 		System.out.println(log);
 		msgLog = msgLog.concat(log + "\r\n");
 		

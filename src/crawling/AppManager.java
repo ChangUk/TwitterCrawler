@@ -93,6 +93,8 @@ public class AppManager {
 				}
 			}
 		}.start();
+		
+		app.printRateLimitStatus(endpoint);
 	}
 	
 	/**

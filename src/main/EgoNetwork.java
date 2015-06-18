@@ -1,20 +1,12 @@
 package main;
 
-import twitter4j.User;
-
 public class EgoNetwork extends TwitterNetwork {
-	private final int level;
+	// Network depth
+	private int level = -1;
 	
-	/**
-	 * To get user's Twitter ID, visit here: <a href="http://tweeterid.com/">http://tweeterid.com/</a>.
-	 */
-	public EgoNetwork(User egoUser, int level) {
-		super(egoUser);
+	public EgoNetwork(long egoUserID, int level) {
+		super(egoUserID);
 		this.level = level;
-	}
-	
-	public void init() {
-		this.PATH_DATA = Settings.PATH_DATA + "__ego_network/" + mSeedUser.getID() + "_" + level + "/";
 	}
 	
 	public int level() {
