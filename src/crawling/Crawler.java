@@ -14,7 +14,7 @@ import main.TwitterUser;
 import tool.Utils;
 import twitter4j.Status;
 import twitter4j.User;
-import database.DBAdapter;
+import database.DBHelper;
 
 public class Crawler {
 	private Engine engine = Engine.getSingleton();
@@ -26,12 +26,12 @@ public class Crawler {
 	private ExecutorService exeService;
 	
 	// Database transaction manager
-	private DBAdapter mDBAdapter;
+	private DBHelper mDBHelper;
 	
 	public Crawler() {
 		this.queue = new LinkedList<Long>();
 		this.exeService = Executors.newCachedThreadPool();
-		this.mDBAdapter = DBAdapter.getSingleton();
+		this.mDBHelper = new DBHelper();
 	}
 	
 	public void run(EgoNetwork egoNetwork) {
@@ -43,7 +43,7 @@ public class Crawler {
 		// Lookup seed user
 		User seedUser = engine.showUser(egoNetwork.getSeedUserID());
 		if (seedUser == null) return;
-		mDBAdapter.insertUser(seedUser);
+		mDBHelper.insertUser(seedUser);
 		queue.offer(seedUser.getId());
 		
 		// Set visiting limit for exploring with BFS until at the given level
@@ -84,23 +84,23 @@ public class Crawler {
 					@Override
 					public void run() {
 						super.run();
-						mDBAdapter.insertUsers(followingUsers);
-						mDBAdapter.insertFollowing(userID, followings);
+						mDBHelper.insertUsers(followingUsers);
+						mDBHelper.insertFollowing(userID, followings);
 						
 						ArrayList<Status> timeline = engine.getTimeline(user);
-						mDBAdapter.insertTweets(timeline);
+						mDBHelper.insertTweets(timeline);
 						
 						ArrayList<Status> retweets = engine.getRetweets(timeline);
-						mDBAdapter.insertRetweetHistory(userID, retweets);
+						mDBHelper.insertRetweetHistory(userID, retweets);
 						
 						ArrayList<Long> shareList = engine.getSharedTweets(timeline);
-						mDBAdapter.insertShareHistory(userID, shareList);
+						mDBHelper.insertShareHistory(userID, shareList);
 						
 						HashMap<Long, ArrayList<Date>> mentions = engine.getMentionHistory(userID, timeline);
-						mDBAdapter.insertMentionHistory(userID, mentions);
+						mDBHelper.insertMentionHistory(userID, mentions);
 						
 						ArrayList<Status> favorites = engine.getFavorites(user);
-						mDBAdapter.insertFavoriteHistory(userID, favorites);
+						mDBHelper.insertFavoriteHistory(userID, favorites);
 					}
 				};
 				exeService.execute(thread);
@@ -135,7 +135,6 @@ public class Crawler {
 			}
 		}
 		
-		System.out.println("Exploring graph has done!");
 		exeService.shutdown();
 		while (exeService.isTerminated() == false) {
 			// Wait for other running threads
@@ -145,7 +144,7 @@ public class Crawler {
 		engine.saveUserMap();
 		
 		// Close database connection
-		mDBAdapter.finalize();
+		mDBHelper.closeDBConnection();
 		
 		// Garbage collection
 		System.gc();
