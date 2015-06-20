@@ -1,11 +1,5 @@
 package crawling;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -38,46 +32,18 @@ public class Engine {
 	 * <Crawled user ID - TwitterUser instance> pairs
 	 * This hash map contains users(nodes) which have ever been looked up at least once.
 	 */
-	private HashMap<Long, TwitterUser> mUserMap;
+	private HashMap<Long, TwitterUser> mUserMap = null;
 	
 	public Engine() {
 		this.mAppManager = AppManager.getSingleton();
-		loadUserMap();
 	}
 	
 	public HashMap<Long, TwitterUser> getUserMap() {
 		return mUserMap;
 	}
 	
-	public void saveUserMap() {
-		try {
-			File file = new File(Settings.PATH_DATA + "user_map");
-			FileOutputStream fos = new FileOutputStream(file);
-			ObjectOutputStream oos = new ObjectOutputStream(fos);
-			oos.writeObject(mUserMap);
-			oos.flush();
-			oos.close();
-			fos.close();
-		} catch (IOException e) {
-		}
-	}
-	
-	@SuppressWarnings("unchecked")
-	public void loadUserMap() {
-		try {
-			File file = new File(Settings.PATH_DATA + "user_map");
-			FileInputStream fis = new FileInputStream(file);
-			ObjectInputStream ois = new ObjectInputStream(fis);
-			this.mUserMap = (HashMap<Long, TwitterUser>) ois.readObject();
-			if (mUserMap.size() > 0)
-				System.out.println("### Existing user map size: " + mUserMap.size());
-			ois.close();
-			fis.close();
-		} catch (IOException e) {
-			this.mUserMap = new HashMap<Long, TwitterUser>();
-		} catch (ClassNotFoundException cnfe) {
-			this.mUserMap = new HashMap<Long, TwitterUser>();
-		}
+	public void setUserMap(HashMap<Long, TwitterUser> userMap) {
+		this.mUserMap = userMap;
 	}
 	
 	/**
@@ -177,11 +143,12 @@ public class Engine {
 	/**
 	 * Get friendship from intersection between followings ID list and followers ID list.
 	 * This task involves looking up process.
-	 * @param followings
-	 * @param followers
+	 * @param followings Following user list
+	 * @param followers Follower list
+	 * @param useFiltering If <code>true</code>, we can get filtered friendship list by setting criteria
 	 * @return Friendship ID list
 	 */
-	public ArrayList<Long> getFriendship(ArrayList<Long> followings, ArrayList<Long> followers) {
+	public ArrayList<Long> getFriendship(ArrayList<Long> followings, ArrayList<Long> followers, boolean useFiltering) {
 		if (followings == null || followers == null) return null;
 		
 		// Find intersection between followers and followees
@@ -191,9 +158,23 @@ public class Engine {
 				intersection.add(follower);
 		}
 		
-		// Filtering with some criteria and then set friendship list of a user
-		ArrayList<User> users = lookupUsers(intersection);
-		return testUserValidity(users);
+		if (useFiltering) {
+			// Filtering with some criteria and then set friendship list of a user
+			ArrayList<User> users = lookupUsers(intersection);
+			
+			ArrayList<Long> validUsersIDs = new ArrayList<Long>();
+			for (User user : users) {
+				// Register user into user map
+				if (mUserMap.containsKey(user.getId()) == false)
+					mUserMap.put(user.getId(), new TwitterUser(user));
+				
+				// Test if the user is valid.
+				if (Settings.isValidUser(user))
+					validUsersIDs.add(user.getId());
+			}
+			return validUsersIDs;
+		} else
+			return intersection;
 	}
 	
 	/**
@@ -213,9 +194,7 @@ public class Engine {
 			ArrayList<Long> bufferList = new ArrayList<Long>();
 			for (int i = cursor; i < userList.size() && bufferList.size() < 100; i++) {
 				long userID = userList.get(i);
-				// CHeck if the user is already obtained earlier
-				if (mUserMap.containsKey(userID) == false)
-					bufferList.add(userID);
+				bufferList.add(userID);
 				cursor++;
 			}
 			if (bufferList.isEmpty()) break;
@@ -256,30 +235,6 @@ public class Engine {
 		}
 		
 		return users;
-	}
-	
-	/**
-	 * Filter invalid users out by some criteria.
-	 * @param users Test set
-	 * @return Valid users' IDs
-	 */
-	public ArrayList<Long> testUserValidity(ArrayList<User> users) {
-		ArrayList<Long> validUsersIDs = new ArrayList<Long>();
-		for (User user : users) {
-			// Get TwitterUser instance from user map or create new one.
-			TwitterUser twitterUser = mUserMap.get(user.getId());
-			if (twitterUser == null) {
-				twitterUser = new TwitterUser(user);
-				mUserMap.put(user.getId(), twitterUser);
-			}
-			
-			// Test if the user is valid.
-			if (Settings.isValidUser(user))
-				validUsersIDs.add(user.getId());
-			else
-				twitterUser.setProtected();
-		}
-		return validUsersIDs;
 	}
 	
 	/**

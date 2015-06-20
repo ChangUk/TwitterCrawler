@@ -99,7 +99,8 @@ public class ConnectionPool {
 	}
 	
 	/**
-	 * Create new connection and then get the connection
+	 * Create new connection and then get the connection.
+	 * If any database does not exist, then it will be created automatically.
 	 * @return Newly created connection
 	 */
 	public Connection getNewConnection() {

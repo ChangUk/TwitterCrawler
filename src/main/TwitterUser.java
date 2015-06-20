@@ -13,11 +13,26 @@ public class TwitterUser implements Serializable {
 	private boolean isProtected;
 	private boolean isVerifiedCelebrity;
 	private String lang;
-	private long date;
 	private int followingsCount;
 	private int followersCount;
 	private int tweetsCount;
+	private long latestTweetID;
+	private long date;
 	private ArrayList<Long> mFollowingUserList	= null;
+	
+	public TwitterUser(long id, boolean isVisited, boolean isProtected, boolean isVerifiedCelebrity, String lang,
+			int followingsCount, int followersCount, int tweetsCount, long latestTweetID, long date) {
+		this.id = id;
+		this.isVisited = isVisited;
+		this.isProtected = isProtected;
+		this.isVerifiedCelebrity = isVerifiedCelebrity;
+		this.lang = lang;
+		this.followingsCount = followingsCount;
+		this.followersCount = followersCount;
+		this.tweetsCount = tweetsCount;
+		this.latestTweetID = latestTweetID;
+		this.date = date;
+	}
 	
 	public TwitterUser(User user) {
 		this.id = user.getId();
@@ -25,10 +40,11 @@ public class TwitterUser implements Serializable {
 		this.isProtected = user.isProtected();
 		this.isVerifiedCelebrity = user.isVerified();
 		this.lang = user.getLang();
-		this.date = user.getCreatedAt().getTime();
 		this.followingsCount = user.getFriendsCount();
 		this.followersCount = user.getFollowersCount();
 		this.tweetsCount = user.getStatusesCount();
+		this.latestTweetID = (isProtected || user.getStatus() == null ? -1L : user.getStatus().getId());
+		this.date = user.getCreatedAt().getTime();
 	}
 	
 	public long getID() {
@@ -59,10 +75,6 @@ public class TwitterUser implements Serializable {
 		return lang;
 	}
 	
-	public long getDate() {
-		return date;
-	}
-	
 	public int getFollowingsCount() {
 		return followingsCount;
 	}
@@ -73,6 +85,14 @@ public class TwitterUser implements Serializable {
 	
 	public int getTweetsCount() {
 		return tweetsCount;
+	}
+	
+	public long getLatestTweetID() {
+		return latestTweetID;
+	}
+	
+	public long getDate() {
+		return date;
 	}
 	
 	public ArrayList<Long> getFollowingList() {

@@ -17,7 +17,7 @@ import twitter4j.User;
 import database.DBHelper;
 
 public class Crawler {
-	private Engine engine = Engine.getSingleton();
+	private Engine engine;
 	
 	// Necessary for Breadth-First-Search
 	private Queue<Long> queue;
@@ -29,9 +29,15 @@ public class Crawler {
 	private DBHelper mDBHelper;
 	
 	public Crawler() {
+		this.engine = Engine.getSingleton();
 		this.queue = new LinkedList<Long>();
 		this.exeService = Executors.newCachedThreadPool();
-		this.mDBHelper = new DBHelper();
+		this.mDBHelper = DBHelper.getSingleton();
+		
+		if (engine.getUserMap() == null) {
+			HashMap<Long, TwitterUser> userMap = mDBHelper.loadUserMap();
+			engine.setUserMap(userMap);
+		}
 	}
 	
 	public void run(EgoNetwork egoNetwork) {
@@ -40,10 +46,9 @@ public class Crawler {
 		Utils.printLog("TWITTER CRAWLING STARTED: " + egoNetwork.getSeedUserID() + " - " + Utils.getCurrentTime(), false);
 		long crawling_start = System.currentTimeMillis();
 		
-		// Lookup seed user
+		// Lookup seed user and put it into BFS queue
 		User seedUser = engine.showUser(egoNetwork.getSeedUserID());
 		if (seedUser == null) return;
-		mDBHelper.insertUser(seedUser);
 		queue.offer(seedUser.getId());
 		
 		// Set visiting limit for exploring with BFS until at the given level
@@ -59,7 +64,7 @@ public class Crawler {
 			long userID = queue.poll();
 			nNodesToVisit[curLevel] -= 1;
 			
-			// Create TwitterUser instance with the given userID
+			// Get TwitterUser instance with the given userID
 			final TwitterUser user;
 			if (engine.getUserMap().containsKey(userID)) {
 				user = engine.getUserMap().get(userID);
@@ -70,23 +75,26 @@ public class Crawler {
 			
 			// If the user is not obtained by crawling yet, do crawling over it!
 			if (user.isVisited() == false && Settings.isValidUser(user)) {
+				// Get following user list
 				ArrayList<Long> followings = engine.getFollowings(user, 5000);
-				ArrayList<User> followingUsers = engine.lookupUsers(followings);
+				user.setFollowingList(followings);
 				
-				// Test validity of following users. If the following user does not exist in user map, register it
-				ArrayList<Long> validUsers = engine.testUserValidity(followingUsers);
-				
-				// Set following user list with valid users
-				user.setFollowingList(validUsers);
+//				// Look up and register following users
+//				ArrayList<Long> unregisteredUsers = new ArrayList<Long>();
+//				for (long followingUserID : followings) {
+//					if (engine.getUserMap().containsKey(followingUserID) == false)
+//						unregisteredUsers.add(followingUserID);
+//				}
+//				ArrayList<User> unregisteredFollowingUsers = engine.lookupUsers(unregisteredUsers);
+//				for (User unregisteredUser : unregisteredFollowingUsers) {
+//					engine.getUserMap().put(unregisteredUser.getId(), new TwitterUser(unregisteredUser));
+//				}
 				
 				// Get timeline and save it into local database
 				Thread thread = new Thread() {
 					@Override
 					public void run() {
 						super.run();
-						mDBHelper.insertUsers(followingUsers);
-						mDBHelper.insertFollowing(userID, followings);
-						
 						ArrayList<Status> timeline = engine.getTimeline(user);
 						mDBHelper.insertTweets(timeline);
 						
@@ -113,9 +121,8 @@ public class Crawler {
 				// Add node into network
 				egoNetwork.getVisitedNodeList().add(userID);
 				
-				// Increase the number of nodes at the next level
 				if (curLevel < egoNetwork.level()) {
-					// If the user is valid user,
+					// If the user is valid user, increase the number of nodes to visit at the next level
 					if (Settings.isValidUser(user)) {
 						for (long friendID : user.getFollowingList()) {
 							if (egoNetwork.getVisitedNodeList().contains(friendID) || queue.contains(friendID))
@@ -141,10 +148,10 @@ public class Crawler {
 		}
 		
 		// Save user map into file
-		engine.saveUserMap();
+		mDBHelper.updateUserMap();
 		
 		// Close database connection
-		mDBHelper.closeDBConnection();
+		mDBHelper.closeDBConnections();
 		
 		// Garbage collection
 		System.gc();
