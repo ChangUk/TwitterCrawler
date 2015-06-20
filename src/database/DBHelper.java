@@ -11,12 +11,10 @@ import java.util.Date;
 import java.util.HashMap;
 
 import main.Settings;
-import main.TwitterUser;
 
 import org.sqlite.SQLiteConfig;
-import org.sqlite.SQLiteConfig.Pragma;
+import org.sqlite.SQLiteConfig.JournalMode;
 
-import crawling.Engine;
 import tool.Utils;
 import twitter4j.Status;
 import twitter4j.User;
@@ -42,20 +40,21 @@ public class DBHelper {
 			
 			// Configuration
 			SQLiteConfig config = new SQLiteConfig();
-			config.setPragma(Pragma.JOURNAL_MODE, "wal");
-			
+			config.setJournalMode(JournalMode.WAL);
+			config.enforceForeignKeys(true);
 			// If database does not exist, then it will be created automatically.
 			conn = DriverManager.getConnection(DBPATH, config.toProperties());
 			conn.setAutoCommit(false);
 			
-			// Create DB tables
-			createDBTables();
-			
 			// Create connection pool
 			SQLiteConfig poolConfig = new SQLiteConfig();
 			poolConfig.setReadOnly(true);
+			config.enforceForeignKeys(true);
 			connectionPool = new ConnectionPool(DBPATH, poolConfig.toProperties());
 			connectionPool.setMaxPoolSize(1000);
+			
+			// Create DB tables
+			createDBTables();
 		} catch (ClassNotFoundException e) {
 		} catch (SQLException e) {
 		}
@@ -76,7 +75,6 @@ public class DBHelper {
 		try {
 			Statement stmt = conn.createStatement();
 			stmt.executeUpdate(sql);
-			
 			conn.commit();
 			stmt.close();
 		} catch (SQLException e) {
@@ -91,7 +89,6 @@ public class DBHelper {
 			Statement stmt = conn.createStatement();
 			for (String sql : sqls)
 				stmt.executeUpdate(sql);
-			
 			conn.commit();
 			stmt.close();
 		} catch (SQLException e) {
@@ -110,7 +107,6 @@ public class DBHelper {
 				prep.addBatch();
 			}
 			prep.executeBatch();
-			
 			conn.commit();
 			prep.close();
 		} catch (SQLException e) {
@@ -123,7 +119,7 @@ public class DBHelper {
 	public boolean createDBTables() {
 		ArrayList<String> sqls = new ArrayList<String>();
 		sqls.add("CREATE TABLE IF NOT EXISTS user ("
-				+ "id INTEGER PRIMARY KEY, isVisited INTEGER, isProtected INTEGER, isVerified INTEGER, lang TEXT, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, latestTweet INTEGER, date INTEGER)");
+				+ "id INTEGER PRIMARY KEY, isProtected INTEGER, isVerified INTEGER, lang TEXT, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, latestTweet INTEGER, date INTEGER)");
 		sqls.add("CREATE TABLE IF NOT EXISTS follow ("
 				+ "source INTEGER, target INTEGER, "
 				+ "FOREIGN KEY(source) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(source, target))");
@@ -136,131 +132,67 @@ public class DBHelper {
 				+ "user INTEGER, tweet INTEGER, "
 				+ "FOREIGN KEY(user) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(user, tweet))");
 		sqls.add("CREATE TABLE IF NOT EXISTS favorite ("
-				+ "user INTEGER, tweet INTEGER, FOREIGN KEY(user) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(user, tweet))");
+				+ "user INTEGER, tweet INTEGER, "
+				+ "FOREIGN KEY(user) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(user, tweet))");
 		sqls.add("CREATE TABLE IF NOT EXISTS mention ("
 				+ "source INTEGER, target INTEGER, date INTEGER, "
 				+ "FOREIGN KEY(source) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(source, target, date))");
 		return execQuery(sqls);
 	}
 	
-	public HashMap<Long, TwitterUser> loadUserMap() {
-		HashMap<Long, TwitterUser> userMap = new HashMap<Long, TwitterUser>();
-		String sqlSelectUsers = new String("SELECT * FROM user");
-		String sqlSelectFollowings = new String("SELECT * FROM follow");
-		
-		Connection conn = connectionPool.getConnection();
-		try {
-			Statement stmt = conn.createStatement();
-			
-			// User information
-			ResultSet rs = stmt.executeQuery(sqlSelectUsers);
-			while (rs.next()) {
-				TwitterUser user = new TwitterUser(rs.getLong("id"), (rs.getInt("isVisited") > 0 ? true : false), (rs.getInt("isProtected") > 0 ? true : false), (rs.getInt("isVerified") > 0 ? true : false), rs.getString("lang"), rs.getInt("followingsCount"), rs.getInt("followersCount"), rs.getInt("tweetsCount"), rs.getLong("latestTweet"), rs.getLong("date"));
-				userMap.put(rs.getLong("id"), user);
-			}
-			rs.close();
-			
-			// Following relationship
-			rs = stmt.executeQuery(sqlSelectFollowings);
-			while (rs.next()) {
-				long userID = rs.getLong("source");
-				if (userMap.get(userID).getFollowingList() == null)
-					userMap.get(userID).setFollowingList(new ArrayList<Long>());
-				userMap.get(userID).getFollowingList().add(rs.getLong("target"));
-			}
-			rs.close();
-			stmt.close();
-		} catch (SQLException e) {
-			e.printStackTrace();
-			System.exit(0);
-		}
-		connectionPool.freeConnection(conn);
-		return userMap;
-	}
-	
-	public boolean updateUserMap() {
-		Engine engine = Engine.getSingleton();
-		HashMap<Long, TwitterUser> userMap = engine.getUserMap();
-		
-		String sqlUser = new String("INSERT OR REPLACE INTO user (id, isVisited, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, latestTweet, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-		try {
-			PreparedStatement prep = conn.prepareStatement(sqlUser);		// SQL query to be compiled should involve question('?') marks.
-			for (TwitterUser user : userMap.values()) {
-				prep.setLong(1, user.getID());
-				prep.setInt(2, user.isVisited() ? 1 : 0);
-				prep.setInt(3, user.isProtected() ? 1 : 0);
-				prep.setInt(4, user.isVerifiedCelebrity() ? 1 : 0);
-				prep.setString(5, user.getLang());
-				prep.setInt(6, user.getFollowingsCount());
-				prep.setInt(7, user.getFollowersCount());
-				prep.setInt(8, user.getTweetsCount());
-				prep.setLong(9, user.getLatestTweetID());
-				prep.setLong(10, user.getDate());
-				prep.addBatch();
-			}
-			prep.executeBatch();
-			
-			conn.commit();
-			prep.close();
-		} catch (SQLException e) {
-			e.printStackTrace();
-			return false;
-		}
-		
-		String sqlFollow = new String("INSERT OR IGNORE INTO follow (source, target) VALUES (?, ?)");
-		try {
-			PreparedStatement prep = conn.prepareStatement(sqlFollow);		// SQL query to be compiled should involve question('?') marks.
-			for (TwitterUser user : userMap.values()) {
-				if (user.getFollowingList() == null) 
-					continue;
-				for (long target : user.getFollowingList()) {
-					prep.setLong(1, user.getID());
-					prep.setLong(2, target);
-					prep.addBatch();
-				}
-			}
-			prep.executeBatch();
-			
-			conn.commit();
-			prep.close();
-		} catch (SQLException e) {
-			e.printStackTrace();
-			return false;
-		}
-		
-		return true;
-	}
-	
 	public boolean insertUser(User user) {
-		String sql = new String("INSERT OR IGNORE INTO user (id, isVisited, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, latestTweet, date) VALUES ("
-				+ user.getId() + ", 0, " + (user.isProtected() ? 1 : 0) + ", " + (user.isVerified() ? 1 : 0) + ", '" + user.getLang() + "', " + user.getFriendsCount() + ", " + user.getFollowersCount() + ", " + user.getStatusesCount() + ", " + (user.getStatus() == null ? -1L : user.getStatus().getId()) + ", " + user.getCreatedAt().getTime() + ")");
+		if (user == null) return false;
+		String sql = new String("INSERT OR IGNORE INTO user ("
+				+ "id, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, latestTweet, date) VALUES ("
+				+ user.getId() + ", " + (user.isProtected() ? 1 : 0) + ", " + (user.isVerified() ? 1 : 0) + ", '"
+				+ user.getLang() + "', " + user.getFriendsCount() + ", " + user.getFollowersCount() + ", " + user.getStatusesCount() + ", "
+				+ (user.getStatus() == null ? -1L : user.getStatus().getId()) + ", " + user.getCreatedAt().getTime() + ")");
 		return execQuery(sql);
 	}
 	
 	public boolean insertUsers(ArrayList<User> users) {
-		String sql = new String("INSERT OR IGNORE INTO user (id, isVisited, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, latestTweet, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+		if (users == null) return false;
+		String sql = new String("INSERT OR IGNORE INTO user ("
+				+ "id, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, latestTweet, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		ArrayList<String[]> values = new ArrayList<String[]>();
 		for (User user : users) {
-			String[] value = new String[10];
+			String[] value = new String[9];
 			value[0] = String.valueOf(user.getId());
-			value[1] = String.valueOf(0);
-			value[2] = String.valueOf(user.isProtected() ? 1 : 0);
-			value[3] = String.valueOf(user.isVerified() ? 1 : 0);
-			value[4] = user.getLang();
-			value[5] = String.valueOf(user.getFriendsCount());
-			value[6] = String.valueOf(user.getFollowersCount());
-			value[7] = String.valueOf(user.getStatusesCount());
-			value[8] = String.valueOf(user.getStatus() == null ? -1L : user.getStatus().getId());
-			value[9] = String.valueOf(user.getCreatedAt().getTime());
+			value[1] = String.valueOf(user.isProtected() ? 1 : 0);
+			value[2] = String.valueOf(user.isVerified() ? 1 : 0);
+			value[3] = user.getLang();
+			value[4] = String.valueOf(user.getFriendsCount());
+			value[5] = String.valueOf(user.getFollowersCount());
+			value[6] = String.valueOf(user.getStatusesCount());
+			value[7] = String.valueOf(user.getStatus() == null ? -1L : user.getStatus().getId());
+			value[8] = String.valueOf(user.getCreatedAt().getTime());
 			values.add(value);
 		}
 		return batchQueries(sql, values);
 	}
 	
-	public boolean insertFollowing(long userID, ArrayList<Long> followings) {
+	public ArrayList<Long> getFollowingList(long userID) {
+		ArrayList<Long> followingUserIDs = new ArrayList<Long>();
+		String sql = new String("SELECT target FROM follow WHERE source = " + userID);
+		Connection conn = connectionPool.getConnection();
+		try {
+			Statement stmt = conn.createStatement();
+			ResultSet rs = stmt.executeQuery(sql);
+			while (rs.next())
+				followingUserIDs.add(rs.getLong(1));
+			rs.close();
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		connectionPool.freeConnection(conn);
+		return followingUserIDs;
+	}
+	
+	public boolean insertFollowingList(long userID, ArrayList<Long> followingList) {
 		String sql = new String("INSERT OR IGNORE INTO follow (source, target) VALUES (?, ?)");
 		ArrayList<String[]> values = new ArrayList<String[]>();
-		for (long followingUserID : followings) {
+		for (long followingUserID : followingList) {
 			String[] value = new String[2];
 			value[0] = String.valueOf(userID);
 			value[1] = String.valueOf(followingUserID);
@@ -365,5 +297,23 @@ public class DBHelper {
 		connectionPool.freeConnection(conn);
 		
 		return friendshipList;
+	}
+	
+	public boolean hasRecord(long userID) {
+		String sql = new String("SELECT * FROM user WHERE id = " + userID);
+		boolean result = false;
+		Connection conn = connectionPool.getConnection();
+		try {
+			Statement stmt = conn.createStatement();
+			ResultSet rs = stmt.executeQuery(sql);
+			if (rs.next())
+				result = true;
+			rs.close();
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		connectionPool.freeConnection(conn);
+		return result;
 	}
 }

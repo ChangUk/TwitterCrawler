@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 
-import main.Settings;
-import main.TwitterUser;
 import tool.Utils;
 import twitter4j.HttpResponseCode;
 import twitter4j.IDs;
@@ -26,41 +24,26 @@ public class Engine {
 	
 	// Twitter application manager
 	private AppManager mAppManager = null;
-	private TwitterApp app;
-	
-	/**
-	 * <Crawled user ID - TwitterUser instance> pairs
-	 * This hash map contains users(nodes) which have ever been looked up at least once.
-	 */
-	private HashMap<Long, TwitterUser> mUserMap = null;
 	
 	public Engine() {
 		this.mAppManager = AppManager.getSingleton();
 	}
 	
-	public HashMap<Long, TwitterUser> getUserMap() {
-		return mUserMap;
-	}
-	
-	public void setUserMap(HashMap<Long, TwitterUser> userMap) {
-		this.mUserMap = userMap;
-	}
-	
 	/**
 	 * The following users' IDs are obtained by Twitter REST API.
-	 * @param user User that data is loaded into.
+	 * @param userID User that data is loaded into.
 	 * @param maxCount Maximum number of record to be obtained
 	 * @return Following users' IDs
 	 */
-	public ArrayList<Long> getFollowings(TwitterUser user, int maxCount) {
+	public ArrayList<Long> getFollowings(long userID, int maxCount) {
 		String endpoint = "/friends/ids";
 		ArrayList<Long> followingUsers = new ArrayList<Long>();
 		
 		long cursor = -1;
 		while (cursor != 0) {
+			TwitterApp app = mAppManager.getAvailableApp(endpoint);
 			try {
-				app = mAppManager.getAvailableApp(endpoint);
-				IDs followingsIDs = app.twitter.getFriendsIDs(user.getID(), cursor);
+				IDs followingsIDs = app.twitter.getFriendsIDs(userID, cursor);
 				for (long followingID : followingsIDs.getIDs()) {
 					followingUsers.add(followingID);
 					if (followingUsers.size() == maxCount)
@@ -77,7 +60,6 @@ public class Engine {
 						te.printStackTrace();
 					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
 					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
-						user.setProtected();
 						retry = false;							// Do not retry anymore
 						break;
 					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
@@ -95,19 +77,19 @@ public class Engine {
 	
 	/**
 	 * The followers' IDs are obtained by Twitter REST API.
-	 * @param user User that data is loaded into.
+	 * @param userID User that data is loaded into.
 	 * @param maxCount Maximum number of record to be obtained
 	 * @return Followers' IDs
 	 */
-	public ArrayList<Long> getFollowers(TwitterUser user, int maxCount) {
+	public ArrayList<Long> getFollowers(long userID, int maxCount) {
 		String endpoint = "/followers/ids";
 		ArrayList<Long> followers = new ArrayList<Long>();
 		
 		long cursor = -1;
 		while (cursor != 0) {
+			TwitterApp app = mAppManager.getAvailableApp(endpoint);
 			try {
-				app = mAppManager.getAvailableApp(endpoint);
-				IDs followersIDs = app.twitter.getFollowersIDs(user.getID(), cursor);
+				IDs followersIDs = app.twitter.getFollowersIDs(userID, cursor);
 				for (long followerID : followersIDs.getIDs()) {
 					followers.add(followerID);
 					if (followers.size() == maxCount)
@@ -124,7 +106,6 @@ public class Engine {
 						te.printStackTrace();
 					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
 					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
-						user.setProtected();
 						retry = false;							// Do not retry anymore
 						break;
 					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
@@ -138,43 +119,6 @@ public class Engine {
 		}
 		
 		return followers;
-	}
-	
-	/**
-	 * Get friendship from intersection between followings ID list and followers ID list.
-	 * This task involves looking up process.
-	 * @param followings Following user list
-	 * @param followers Follower list
-	 * @param useFiltering If <code>true</code>, we can get filtered friendship list by setting criteria
-	 * @return Friendship ID list
-	 */
-	public ArrayList<Long> getFriendship(ArrayList<Long> followings, ArrayList<Long> followers, boolean useFiltering) {
-		if (followings == null || followers == null) return null;
-		
-		// Find intersection between followers and followees
-		ArrayList<Long> intersection = new ArrayList<Long>();
-		for (long follower : followers) {
-			if (followings.contains(follower))
-				intersection.add(follower);
-		}
-		
-		if (useFiltering) {
-			// Filtering with some criteria and then set friendship list of a user
-			ArrayList<User> users = lookupUsers(intersection);
-			
-			ArrayList<Long> validUsersIDs = new ArrayList<Long>();
-			for (User user : users) {
-				// Register user into user map
-				if (mUserMap.containsKey(user.getId()) == false)
-					mUserMap.put(user.getId(), new TwitterUser(user));
-				
-				// Test if the user is valid.
-				if (Settings.isValidUser(user))
-					validUsersIDs.add(user.getId());
-			}
-			return validUsersIDs;
-		} else
-			return intersection;
 	}
 	
 	/**
@@ -202,8 +146,8 @@ public class Engine {
 			
 			// Lookup buffer
 			while (true) {
+				TwitterApp app = mAppManager.getAvailableApp(endpoint);
 				try {
-					app = mAppManager.getAvailableApp(endpoint);
 					ResponseList<User> testset = app.twitter.lookupUsers(buffer);
 					for (User user : testset)
 						users.add(user);
@@ -239,15 +183,15 @@ public class Engine {
 	
 	/**
 	 * Get 'User' instance for the given user.
-	 * @param screenName
+	 * @param userID
 	 * @return User instance
 	 */
 	public User showUser(long userID) {
 		String endpoint = "/users/show/:id";
 		
 		while (true) {
+			TwitterApp app = mAppManager.getAvailableApp(endpoint);
 			try {
-				app = mAppManager.getAvailableApp(endpoint);
 				User user = app.twitter.showUser(userID);
 				return user;
 			} catch (TwitterException te) {
@@ -277,18 +221,18 @@ public class Engine {
 	 * Requests for more than the limit will result in a reply with a status code of 200
 	 * and an empty result in the format requested.
 	 * To ensure performance of the site, this artificial limit is temporarily in place.
-	 * @param user Target user
+	 * @param userID Target user's ID
 	 * @return Timeline of the given user
 	 */
-	public ArrayList<Status> getTimeline(TwitterUser user) {
+	public ArrayList<Status> getTimeline(long userID) {
 		String endpoint = "/statuses/user_timeline";
 		ArrayList<Status> timeline = new ArrayList<Status>();
 		
 		int page = 1;
 		while (true) {
+			TwitterApp app = mAppManager.getAvailableApp(endpoint);
 			try {
-				app = mAppManager.getAvailableApp(endpoint);
-				ResponseList<Status> onePage = app.twitter.getUserTimeline(user.getID(), new Paging(page, 200));
+				ResponseList<Status> onePage = app.twitter.getUserTimeline(userID, new Paging(page, 200));
 				if (onePage.size() == 0)
 					break;
 				timeline.addAll(onePage);
@@ -303,7 +247,6 @@ public class Engine {
 						te.printStackTrace();
 					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
 					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
-						user.setProtected();
 						retry = false;							// Do not retry anymore
 						break;
 					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
@@ -320,9 +263,9 @@ public class Engine {
 	}
 	
 	/**
-	 * Get shared tweet ID and its author's name pairs from the given timeline.
+	 * Get shared status IDs from the given timeline
 	 * @param timeline
-	 * @return <Shared tweet ID - author name> pairs
+	 * @return Shared status IDs
 	 */
 	public ArrayList<Long> getSharedTweets(ArrayList<Status> timeline) {
 		ArrayList<Long> shareList = new ArrayList<Long>();
@@ -368,6 +311,11 @@ public class Engine {
 		return shareList;
 	}
 	
+	/**
+	 * Get retweet IDs from the given timeline.
+	 * @param timeline
+	 * @return Retweet IDs
+	 */
 	public ArrayList<Status> getRetweets(ArrayList<Status> timeline) {
 		ArrayList<Status> retweetList = new ArrayList<Status>();
 		for (Status tweet : timeline) {
@@ -377,6 +325,13 @@ public class Engine {
 		return retweetList;
 	}
 	
+	/**
+	 * Get mention history from the given userID.
+	 * This task returns {mentioned user's ID - its date} pairs
+	 * @param userID
+	 * @param timeline
+	 * @return Mentioned user's ID and its date pairs
+	 */
 	public HashMap<Long, ArrayList<Date>> getMentionHistory(long userID, ArrayList<Status> timeline) {
 		HashMap<Long, ArrayList<Date>> mentionHistory = new HashMap<Long, ArrayList<Date>>();
 		for (Status tweet : timeline) {
@@ -397,18 +352,18 @@ public class Engine {
 	
 	/**
 	 * Get favorites data of a given user using Twitter API.
-	 * @param user Target user
+	 * @param userID Target user's ID
 	 * @return Favorite tweet list of target user
 	 */
-	public ArrayList<Status> getFavorites(TwitterUser user) {
+	public ArrayList<Status> getFavorites(long userID) {
 		String endpoint = "/favorites/list";
 		ArrayList<Status> favorites = new ArrayList<Status>();
 		
 		int page = 1;
 		while (true) {
+			TwitterApp app = mAppManager.getAvailableApp(endpoint);
 			try {
-				app = mAppManager.getAvailableApp(endpoint);
-				ResponseList<Status> onePage = app.twitter.getFavorites(user.getID(), new Paging(page, 200));
+				ResponseList<Status> onePage = app.twitter.getFavorites(userID, new Paging(page, 200));
 				if (onePage.size() == 0)
 					break;
 				favorites.addAll(onePage);
@@ -423,7 +378,6 @@ public class Engine {
 						te.printStackTrace();
 					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
 					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
-						user.setProtected();
 						retry = false;							// Do not retry anymore
 						break;
 					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.

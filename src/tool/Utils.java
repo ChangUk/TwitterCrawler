@@ -193,10 +193,11 @@ public class Utils {
 	/**
 	 * Get program executing time log message.
 	 * @param title Additional log message ahead of executing time information
-	 * @param time Executing time (milliseconds)
+	 * @param startingTime Starting time
 	 * @return Log message of program executing time
 	 */
-	public static String getExecutingTime(String title, long time) {
+	public static String getExecutingTime(String title, long startingTime) {
+		long time = (System.currentTimeMillis() - startingTime) / 1000L;	// Milliseconds
 		return new String("### " + title + ": "
 				+ String.format("%02d", time / 3600) + ":"
 				+ String.format("%02d", ((time % 3600) / 60)) + ":"

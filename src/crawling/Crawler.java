@@ -10,7 +10,6 @@ import java.util.concurrent.Executors;
 
 import main.EgoNetwork;
 import main.Settings;
-import main.TwitterUser;
 import tool.Utils;
 import twitter4j.Status;
 import twitter4j.User;
@@ -33,11 +32,6 @@ public class Crawler {
 		this.queue = new LinkedList<Long>();
 		this.exeService = Executors.newCachedThreadPool();
 		this.mDBHelper = DBHelper.getSingleton();
-		
-		if (engine.getUserMap() == null) {
-			HashMap<Long, TwitterUser> userMap = mDBHelper.loadUserMap();
-			engine.setUserMap(userMap);
-		}
 	}
 	
 	public void run(EgoNetwork egoNetwork) {
@@ -64,72 +58,60 @@ public class Crawler {
 			long userID = queue.poll();
 			nNodesToVisit[curLevel] -= 1;
 			
-			// Get TwitterUser instance with the given userID
-			final TwitterUser user;
-			if (engine.getUserMap().containsKey(userID)) {
-				user = engine.getUserMap().get(userID);
-			} else {
-				user = new TwitterUser(engine.showUser(userID));
-				engine.getUserMap().put(userID, user);
-			}
-			
-			// If the user is not obtained by crawling yet, do crawling over it!
-			if (user.isVisited() == false && Settings.isValidUser(user)) {
-				// Get following user list
-				ArrayList<Long> followings = engine.getFollowings(user, 5000);
-				user.setFollowingList(followings);
+			// Check if it is necessary to get timeline for the given user.
+			if (mDBHelper.hasRecord(userID) == false) {
+				// Get TwitterUser instance with the given userID
+				User user = engine.showUser(userID);
+				mDBHelper.insertUser(user);
 				
-//				// Look up and register following users
-//				ArrayList<Long> unregisteredUsers = new ArrayList<Long>();
-//				for (long followingUserID : followings) {
-//					if (engine.getUserMap().containsKey(followingUserID) == false)
-//						unregisteredUsers.add(followingUserID);
-//				}
-//				ArrayList<User> unregisteredFollowingUsers = engine.lookupUsers(unregisteredUsers);
-//				for (User unregisteredUser : unregisteredFollowingUsers) {
-//					engine.getUserMap().put(unregisteredUser.getId(), new TwitterUser(unregisteredUser));
-//				}
-				
-				// Get timeline and save it into local database
-				Thread thread = new Thread() {
-					@Override
-					public void run() {
-						super.run();
-						ArrayList<Status> timeline = engine.getTimeline(user);
-						mDBHelper.insertTweets(timeline);
-						
-						ArrayList<Status> retweets = engine.getRetweets(timeline);
-						mDBHelper.insertRetweetHistory(userID, retweets);
-						
-						ArrayList<Long> shareList = engine.getSharedTweets(timeline);
-						mDBHelper.insertShareHistory(userID, shareList);
-						
-						HashMap<Long, ArrayList<Date>> mentions = engine.getMentionHistory(userID, timeline);
-						mDBHelper.insertMentionHistory(userID, mentions);
-						
-						ArrayList<Status> favorites = engine.getFavorites(user);
-						mDBHelper.insertFavoriteHistory(userID, favorites);
-					}
-				};
-				exeService.execute(thread);
-				
-				// Set visited
-				user.setVisited();
+				if (Settings.isValidUser(user)) {
+					// Get following user list
+					ArrayList<Long> followings = engine.getFollowings(userID, 5000);
+					mDBHelper.insertFollowingList(userID, followings);
+					
+					// Get timeline and save into stand-alone database
+					Thread timelineThread = new Thread() {
+						@Override
+						public void run() {
+							super.run();
+							ArrayList<Status> timeline = engine.getTimeline(userID);
+							mDBHelper.insertTweets(timeline);
+							
+							ArrayList<Status> retweets = engine.getRetweets(timeline);
+							mDBHelper.insertRetweetHistory(userID, retweets);
+							
+							ArrayList<Long> shareList = engine.getSharedTweets(timeline);
+							mDBHelper.insertShareHistory(userID, shareList);
+							
+							HashMap<Long, ArrayList<Date>> mentions = engine.getMentionHistory(userID, timeline);
+							mDBHelper.insertMentionHistory(userID, mentions);
+						}
+					};
+					exeService.execute(timelineThread);
+					
+					// Get favorites and save into stand-alone database
+					Thread favoritesThread = new Thread() {
+						@Override
+						public void run() {
+							super.run();
+							ArrayList<Status> favorites = engine.getFavorites(userID);
+							mDBHelper.insertFavoriteHistory(userID, favorites);
+						}
+					};
+					exeService.execute(favoritesThread);
+				}
 			}
 			
 			if (egoNetwork.getVisitedNodeList().contains(userID) == false) {
-				// Add node into network
 				egoNetwork.getVisitedNodeList().add(userID);
-				
 				if (curLevel < egoNetwork.level()) {
-					// If the user is valid user, increase the number of nodes to visit at the next level
-					if (Settings.isValidUser(user)) {
-						for (long friendID : user.getFollowingList()) {
-							if (egoNetwork.getVisitedNodeList().contains(friendID) || queue.contains(friendID))
-								continue;
-							queue.offer(friendID);
-							nNodesToVisit[curLevel + 1] += 1;
-						}
+					// Set the number of nodes to visit at the next level
+					ArrayList<Long> followingUsers = mDBHelper.getFollowingList(userID);
+					for (long friendID : followingUsers) {
+						if (egoNetwork.getVisitedNodeList().contains(friendID) || queue.contains(friendID))
+							continue;
+						queue.offer(friendID);
+						nNodesToVisit[curLevel + 1] += 1;
 					}
 				}
 			}
@@ -141,14 +123,12 @@ public class Crawler {
 					break;
 			}
 		}
+		Utils.printLog(Utils.getExecutingTime("Graph search time", crawling_start), false);
 		
 		exeService.shutdown();
 		while (exeService.isTerminated() == false) {
 			// Wait for other running threads
 		}
-		
-		// Save user map into file
-		mDBHelper.updateUserMap();
 		
 		// Close database connection
 		mDBHelper.closeDBConnections();
@@ -159,6 +139,6 @@ public class Crawler {
 		// Print crawling result
 		Utils.printLog("### Current memory usage: " + Utils.getCurMemoryUsage() + " MB", false);
 		Utils.printLog("TWITTER CRAWLING FINISHED", false);
-		Utils.printLog(Utils.getExecutingTime("Total executing time", (System.currentTimeMillis() - crawling_start) / 1000L), true);
+		Utils.printLog(Utils.getExecutingTime("Total executing time", crawling_start), true);
 	}
 }
