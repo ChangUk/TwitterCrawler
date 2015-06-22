@@ -130,7 +130,7 @@ public class Crawler {
 		}
 		
 		// Close database connection
-		mDBHelper.closeDBConnections();
+		mDBHelper.destroy();
 		
 		// Garbage collection
 		System.gc();

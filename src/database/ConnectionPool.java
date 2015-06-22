@@ -135,7 +135,7 @@ public class ConnectionPool {
 	 * Close all free connections.
 	 * If there is any connection alive, wait until the connection gets to be free.
 	 */
-	public void closeAll() {
+	public void closeAll() throws SQLException {
 		while (inUseConnectionCount > 0) {
 			try {
 				// Wait until all connections get to be free
@@ -146,10 +146,7 @@ public class ConnectionPool {
 		
 		while (freeConnections.isEmpty() == false) {
 			Connection conn = freeConnections.poll();
-			try {
-				conn.close();
-			} catch (SQLException e) {
-			}
+			conn.close();
 		}
 	}
 }

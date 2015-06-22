@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.sql.Connection;
+import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -32,15 +33,17 @@ public class DBHelper {
 	private final String DBNAME = "TwitterData.sqlite";
 	private final String DBPATH = "jdbc:sqlite:" + Settings.PATH_DATA + DBNAME;
 	private final String BACKUP = Settings.PATH_DATA + DBNAME + ".backup";
-	private final String DRIVER = "org.sqlite.JDBC";
+	private final String DRIVER_NAME = "org.sqlite.JDBC";
 	
+	private Driver driver = null;						// Database driver
 	private Connection conn = null;						// Connection for DB write
 	private ConnectionPool connectionPool = null;		// Connection pool for DB read
 	
 	public DBHelper() {
 		try {
 			// Register the Driver to the jbdc.driver java property
-			Class.forName(DRIVER);
+			driver = (Driver) Class.forName(DRIVER_NAME).newInstance();
+			DriverManager.registerDriver(driver);
 			
 			// Backup existing database file
 			makeBackupFile();
@@ -63,15 +66,20 @@ public class DBHelper {
 			createDBTables();
 		} catch (ClassNotFoundException e) {
 		} catch (SQLException e) {
+		} catch (IllegalAccessException e) {
+		} catch (InstantiationException e) {
 		}
 	}
 	
-	public synchronized void closeDBConnections() {
+	public synchronized void destroy() {
 		try {
 			if (conn != null)
 				conn.close();
 			if (connectionPool != null)
 				connectionPool.closeAll();
+			
+			// Removes the specified driver from the DriverManager's list of registered drivers
+			DriverManager.deregisterDriver(driver);
 			
 			// Delete backup file
 			File backup = new File(BACKUP);
