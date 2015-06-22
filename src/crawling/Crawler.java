@@ -30,7 +30,7 @@ public class Crawler {
 	public Crawler() {
 		this.engine = Engine.getSingleton();
 		this.queue = new LinkedList<Long>();
-		this.exeService = Executors.newCachedThreadPool();
+		this.exeService = Executors.newFixedThreadPool(1000);
 		this.mDBHelper = DBHelper.getSingleton();
 	}
 	
@@ -57,10 +57,7 @@ public class Crawler {
 			// Get a user from queue
 			long userID = queue.poll();
 			nNodesToVisit[curLevel] -= 1;
-			
-			// Check if it is necessary to get timeline for the given user.
 			if (mDBHelper.hasRecord(userID) == false) {
-				// Get TwitterUser instance with the given userID
 				User user = engine.showUser(userID);
 				mDBHelper.insertUser(user);
 				
@@ -70,49 +67,49 @@ public class Crawler {
 					mDBHelper.insertFollowingList(userID, followings);
 					
 					// Get timeline and save into stand-alone database
-					Thread timelineThread = new Thread() {
+					exeService.execute(new Runnable() {
 						@Override
 						public void run() {
-							super.run();
 							ArrayList<Status> timeline = engine.getTimeline(userID);
-							mDBHelper.insertTweets(timeline);
+							if (timeline.size() > 0) {
+								mDBHelper.insertTweets(timeline);
+								
+								ArrayList<Status> retweets = engine.getRetweets(timeline);
+								mDBHelper.insertRetweetHistory(userID, retweets);
+								
+								ArrayList<Long> shareList = engine.getSharedTweets(timeline);
+								mDBHelper.insertShareHistory(userID, shareList);
+								
+								HashMap<Long, ArrayList<Date>> mentions = engine.getMentionHistory(userID, timeline);
+								mDBHelper.insertMentionHistory(userID, mentions);
+							}
 							
-							ArrayList<Status> retweets = engine.getRetweets(timeline);
-							mDBHelper.insertRetweetHistory(userID, retweets);
-							
-							ArrayList<Long> shareList = engine.getSharedTweets(timeline);
-							mDBHelper.insertShareHistory(userID, shareList);
-							
-							HashMap<Long, ArrayList<Date>> mentions = engine.getMentionHistory(userID, timeline);
-							mDBHelper.insertMentionHistory(userID, mentions);
-						}
-					};
-					exeService.execute(timelineThread);
-					
-					// Get favorites and save into stand-alone database
-					Thread favoritesThread = new Thread() {
-						@Override
-						public void run() {
-							super.run();
 							ArrayList<Status> favorites = engine.getFavorites(userID);
 							mDBHelper.insertFavoriteHistory(userID, favorites);
 						}
-					};
-					exeService.execute(favoritesThread);
+					});
 				}
 			}
 			
-			if (egoNetwork.getVisitedNodeList().contains(userID) == false) {
-				egoNetwork.getVisitedNodeList().add(userID);
-				if (curLevel < egoNetwork.level()) {
-					// Set the number of nodes to visit at the next level
-					ArrayList<Long> followingUsers = mDBHelper.getFollowingList(userID);
-					for (long friendID : followingUsers) {
-						if (egoNetwork.getVisitedNodeList().contains(friendID) || queue.contains(friendID))
-							continue;
-						queue.offer(friendID);
-						nNodesToVisit[curLevel + 1] += 1;
-					}
+			/*
+			 * Register the user as a visited node.
+			 * Once the user is registered into visited user list, the user does not become a candidate of crawler.
+			 * However, in another network, the crawler will regard this user as an unvisited node and try to get his data.
+			 */
+			egoNetwork.getVisitedNodeList().add(userID);
+			
+			/*
+			 * Set the number of nodes to visit at the next level.
+			 * This task is a preparation for crawling at the next level.
+			 * If the user does not satisfy requirements given by you, getFollowingList() returns empty array list.
+			 */
+			if (curLevel < egoNetwork.level()) {
+				ArrayList<Long> followingList = mDBHelper.getFollowingList(userID);
+				for (long followingUserID : followingList) {
+					if (egoNetwork.getVisitedNodeList().contains(followingUserID) || queue.contains(followingUserID))
+						continue;
+					queue.offer(followingUserID);
+					nNodesToVisit[curLevel + 1] += 1;
 				}
 			}
 			
@@ -123,7 +120,9 @@ public class Crawler {
 					break;
 			}
 		}
-		Utils.printLog(Utils.getExecutingTime("Graph search time", crawling_start), false);
+		
+		// Graph searching is finished
+		Utils.printLog(Utils.getExecutingTime("Graph searching time", crawling_start), false);
 		
 		exeService.shutdown();
 		while (exeService.isTerminated() == false) {

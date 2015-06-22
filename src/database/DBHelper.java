@@ -1,5 +1,8 @@
 package database;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -28,6 +31,7 @@ public class DBHelper {
 	
 	private final String DBNAME = "TwitterData.sqlite";
 	private final String DBPATH = "jdbc:sqlite:" + Settings.PATH_DATA + DBNAME;
+	private final String BACKUP = Settings.PATH_DATA + DBNAME + ".backup";
 	private final String DRIVER = "org.sqlite.JDBC";
 	
 	private Connection conn = null;						// Connection for DB write
@@ -38,11 +42,13 @@ public class DBHelper {
 			// Register the Driver to the jbdc.driver java property
 			Class.forName(DRIVER);
 			
-			// Configuration
+			// Backup existing database file
+			makeBackupFile();
+
+			// If database does not exist, then it will be created automatically.
 			SQLiteConfig config = new SQLiteConfig();
 			config.setJournalMode(JournalMode.WAL);
 			config.enforceForeignKeys(true);
-			// If database does not exist, then it will be created automatically.
 			conn = DriverManager.getConnection(DBPATH, config.toProperties());
 			conn.setAutoCommit(false);
 			
@@ -66,8 +72,26 @@ public class DBHelper {
 				conn.close();
 			if (connectionPool != null)
 				connectionPool.closeAll();
+			
+			// Delete backup file
+			File backup = new File(BACKUP);
+			if (backup.exists())
+				Files.delete(backup.toPath());
 		} catch (SQLException e) {
 			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void makeBackupFile() {
+		File existingDatabase = new File(Settings.PATH_DATA + DBNAME);
+		if (existingDatabase.exists()) {
+			File backup = new File(BACKUP);
+			try {
+				Files.copy(existingDatabase.toPath(), backup.toPath());
+			} catch (IOException e) {
+			}
 		}
 	}
 	
@@ -119,7 +143,7 @@ public class DBHelper {
 	public boolean createDBTables() {
 		ArrayList<String> sqls = new ArrayList<String>();
 		sqls.add("CREATE TABLE IF NOT EXISTS user ("
-				+ "id INTEGER PRIMARY KEY, isProtected INTEGER, isVerified INTEGER, lang TEXT, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, latestTweet INTEGER, date INTEGER)");
+				+ "id INTEGER PRIMARY KEY, isProtected INTEGER, isVerified INTEGER, lang TEXT, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, favoritesCount INTEGER, date INTEGER)");
 		sqls.add("CREATE TABLE IF NOT EXISTS follow ("
 				+ "source INTEGER, target INTEGER, "
 				+ "FOREIGN KEY(source) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(source, target))");
@@ -142,18 +166,17 @@ public class DBHelper {
 	
 	public boolean insertUser(User user) {
 		if (user == null) return false;
-		String sql = new String("INSERT OR IGNORE INTO user ("
-				+ "id, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, latestTweet, date) VALUES ("
+		String sql = new String("INSERT OR REPLACE INTO user ("
+				+ "id, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES ("
 				+ user.getId() + ", " + (user.isProtected() ? 1 : 0) + ", " + (user.isVerified() ? 1 : 0) + ", '"
-				+ user.getLang() + "', " + user.getFriendsCount() + ", " + user.getFollowersCount() + ", " + user.getStatusesCount() + ", "
-				+ (user.getStatus() == null ? -1L : user.getStatus().getId()) + ", " + user.getCreatedAt().getTime() + ")");
+				+ user.getLang() + "', " + user.getFriendsCount() + ", " + user.getFollowersCount() + ", " + user.getStatusesCount() + ", " + user.getFavouritesCount() + ", " + user.getCreatedAt().getTime() + ")");
 		return execQuery(sql);
 	}
 	
 	public boolean insertUsers(ArrayList<User> users) {
 		if (users == null) return false;
-		String sql = new String("INSERT OR IGNORE INTO user ("
-				+ "id, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, latestTweet, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+		String sql = new String("INSERT OR REPLACE INTO user ("
+				+ "id, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		ArrayList<String[]> values = new ArrayList<String[]>();
 		for (User user : users) {
 			String[] value = new String[9];
@@ -164,7 +187,7 @@ public class DBHelper {
 			value[4] = String.valueOf(user.getFriendsCount());
 			value[5] = String.valueOf(user.getFollowersCount());
 			value[6] = String.valueOf(user.getStatusesCount());
-			value[7] = String.valueOf(user.getStatus() == null ? -1L : user.getStatus().getId());
+			value[7] = String.valueOf(user.getFavouritesCount());
 			value[8] = String.valueOf(user.getCreatedAt().getTime());
 			values.add(value);
 		}
@@ -199,6 +222,11 @@ public class DBHelper {
 			values.add(value);
 		}
 		return batchQueries(sql, values);
+	}
+	
+	public boolean deleteFollowingList(long userID) {
+		String sql = new String("DELETE FROM follow WHERE source = " + userID);
+		return execQuery(sql);
 	}
 	
 	public boolean insertTweets(ArrayList<Status> tweets) {
@@ -281,7 +309,6 @@ public class DBHelper {
 		ArrayList<Long> friendshipList = new ArrayList<Long>();
 		String sql = new String("SELECT follow.source FROM follow WHERE follow.target = " + userID
 				+ " INTERSECT SELECT follow.target FROM follow WHERE follow.source = " + userID);
-		
 		Connection conn = connectionPool.getConnection();
 		try {
 			Statement stmt = conn.createStatement();
@@ -295,7 +322,6 @@ public class DBHelper {
 			return null;
 		}
 		connectionPool.freeConnection(conn);
-		
 		return friendshipList;
 	}
 	
@@ -308,6 +334,55 @@ public class DBHelper {
 			ResultSet rs = stmt.executeQuery(sql);
 			if (rs.next())
 				result = true;
+			rs.close();
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		connectionPool.freeConnection(conn);
+		return result;
+	}
+	
+	public long getLatestTweetID(long userID) {
+		String sql = new String("SELECT MAX(id) FROM tweet WHERE author = " + userID);
+		long latestTweetID = -1;
+		Connection conn = connectionPool.getConnection();
+		try {
+			Statement stmt = conn.createStatement();
+			ResultSet rs = stmt.executeQuery(sql);
+			if (rs.next())
+				latestTweetID = rs.getLong(1);
+			rs.close();
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		connectionPool.freeConnection(conn);
+		return latestTweetID;
+	}
+	
+	public boolean isNewRecord(User user) {
+		String sql = new String("SELECT * FROM user WHERE id = " + user.getId());
+		boolean result = false;
+		Connection conn = connectionPool.getConnection();
+		try {
+			Statement stmt = conn.createStatement();
+			ResultSet rs = stmt.executeQuery(sql);
+			if (rs.next()) {
+				boolean isProtected = (rs.getInt(2) > 0) ? true : false;
+				boolean isVerified = (rs.getInt(3) > 0) ? true : false;
+				String lang = rs.getString(4);
+				int followingsCount = rs.getInt(5);
+				int followersCount = rs.getInt(6);
+				int tweetsCount = rs.getInt(7);
+				int favoritesCount = rs.getInt(8);
+				
+				if (user.isProtected() != isProtected || user.isVerified() != isVerified || user.getLang().equals(lang) == false
+						|| user.getFriendsCount() != followingsCount || user.getFollowersCount() != followersCount || user.getStatusesCount() != tweetsCount || user.getFavouritesCount() != favoritesCount)
+					result = true;
+			} else {
+				result = true;
+			}
 			rs.close();
 			stmt.close();
 		} catch (SQLException e) {

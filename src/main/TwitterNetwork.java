@@ -5,8 +5,8 @@ import java.util.ArrayList;
 public class TwitterNetwork {
 	// Seed user ID
 	protected final long mSeedUser;
-
-	// Node list that cralwer has ever visited
+	
+	// Node list that crawler has ever visited
 	protected ArrayList<Long> mVisitedNodeList;
 	
 	public TwitterNetwork(long seedUserID) {

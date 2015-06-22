@@ -233,8 +233,7 @@ public class Engine {
 			TwitterApp app = mAppManager.getAvailableApp(endpoint);
 			try {
 				ResponseList<Status> onePage = app.twitter.getUserTimeline(userID, new Paging(page, 200));
-				if (onePage.size() == 0)
-					break;
+				if (onePage.isEmpty()) break;
 				timeline.addAll(onePage);
 				page++;
 			} catch (TwitterException te) {
@@ -364,8 +363,7 @@ public class Engine {
 			TwitterApp app = mAppManager.getAvailableApp(endpoint);
 			try {
 				ResponseList<Status> onePage = app.twitter.getFavorites(userID, new Paging(page, 200));
-				if (onePage.size() == 0)
-					break;
+				if (onePage.isEmpty()) break;
 				favorites.addAll(onePage);
 				page++;
 			} catch (TwitterException te) {
