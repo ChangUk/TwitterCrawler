@@ -12,7 +12,7 @@ public class TwitterMiner {
 //		seedList.add(3182892457L);		// JeeIn
 		
 		for (long seed : seedList) {
-			EgoNetwork egoNetwork = new EgoNetwork(seed, 1);
+			EgoNetwork egoNetwork = new EgoNetwork(seed, 2);
 			Crawler crawler = new Crawler();
 			crawler.run(egoNetwork);
 		}

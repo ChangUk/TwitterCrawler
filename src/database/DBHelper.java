@@ -41,14 +41,19 @@ public class DBHelper {
 	
 	public DBHelper() {
 		try {
+			// If the location to store database does not exist, generate the path
+			File dataPath = new File(Settings.PATH_DATA);
+			if (dataPath.exists() == false)
+				dataPath.mkdirs();
+			
 			// Register the Driver to the jbdc.driver java property
 			driver = (Driver) Class.forName(DRIVER_NAME).newInstance();
 			DriverManager.registerDriver(driver);
 			
 			// Backup existing database file
 			makeBackupFile();
-
-			// If database does not exist, then it will be created automatically.
+			
+			// If database does not exist, then it will be created automatically
 			SQLiteConfig config = new SQLiteConfig();
 			config.setJournalMode(JournalMode.WAL);
 			config.enforceForeignKeys(true);
