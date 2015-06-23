@@ -57,11 +57,14 @@ public class Crawler {
 			// Get a user from queue
 			long userID = queue.poll();
 			nNodesToVisit[curLevel] -= 1;
+			
 			if (mDBHelper.hasRecord(userID) == false) {
 				User user = engine.showUser(userID);
-				mDBHelper.insertUser(user);
 				
 				if (Settings.isValidUser(user)) {
+					// Register valid user to database
+					mDBHelper.insertUser(user);
+					
 					// Get following user list
 					ArrayList<Long> followings = engine.getFollowings(userID, 5000);
 					mDBHelper.insertFollowingList(userID, followings);
