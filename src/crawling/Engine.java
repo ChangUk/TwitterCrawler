@@ -52,19 +52,20 @@ public class Engine {
 				cursor = followingsIDs.getNextCursor();
 			} catch (TwitterException te) {
 				boolean retry = true;
-				if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
+				if (te.exceededRateLimitation()) {					// 429: Rate limit exceeded
 					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
 				} else {
 					switch (te.getStatusCode()) {
-					default:									// Unknown exception occurs
+					default:										// Unknown exception occurs
 						te.printStackTrace();
-					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
-					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
-						retry = false;							// Do not retry anymore
+					case HttpResponseCode.UNAUTHORIZED:				// 401: Authentication credentials were missing or incorrect.
+					case HttpResponseCode.NOT_FOUND:				// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
+						retry = false;								// Do not retry anymore
 						break;
-					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
-					case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
-						Utils.sleep(5000);					// Retry crawling 5 seconds later
+					case HttpResponseCode.INTERNAL_SERVER_ERROR:	// 500: Something is broken. Please post to the group so the Twitter team can investigate.
+					case HttpResponseCode.SERVICE_UNAVAILABLE:		// 503: The Twitter servers are up, but overloaded with requests.
+					case -1:										// Caused by: java.net.UnknownHostException: api.twitter.com
+						Utils.sleep(5000);							// Retry crawling 5 seconds later
 						break;
 					}
 				}
@@ -98,19 +99,20 @@ public class Engine {
 				cursor = followersIDs.getNextCursor();
 			} catch (TwitterException te) {
 				boolean retry = true;
-				if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
+				if (te.exceededRateLimitation()) {					// 429: Rate limit exceeded
 					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
 				} else {
 					switch (te.getStatusCode()) {
-					default:									// Unknown exception occurs
+					default:										// Unknown exception occurs
 						te.printStackTrace();
-					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
-					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
-						retry = false;							// Do not retry anymore
+					case HttpResponseCode.UNAUTHORIZED:				// 401: Authentication credentials were missing or incorrect.
+					case HttpResponseCode.NOT_FOUND:				// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
+						retry = false;								// Do not retry anymore
 						break;
-					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
-					case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
-						Utils.sleep(5000);						// Retry crawling 5 seconds later
+					case HttpResponseCode.INTERNAL_SERVER_ERROR:	// 500: Something is broken. Please post to the group so the Twitter team can investigate.
+					case HttpResponseCode.SERVICE_UNAVAILABLE:		// 503: The Twitter servers are up, but overloaded with requests.
+					case -1:										// Caused by: java.net.UnknownHostException: api.twitter.com
+						Utils.sleep(5000);							// Retry crawling 5 seconds later
 						break;
 					}
 				}
@@ -154,22 +156,23 @@ public class Engine {
 					break;
 				} catch (TwitterException te) {
 					boolean retry = true;
-					if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
+					if (te.exceededRateLimitation()) {					// 429: Rate limit exceeded
 						mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
 					} else {
 						switch (te.getStatusCode()) {
-						default:									// Unknown exception occurs
+						default:										// Unknown exception occurs
 							te.printStackTrace();
-						case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
-						case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
+						case HttpResponseCode.UNAUTHORIZED:				// 401: Authentication credentials were missing or incorrect.
+						case HttpResponseCode.NOT_FOUND:				// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
 							System.out.println("Lookup error: " + te.getStatusCode() + ", buffer: " + buffer);
 							for (long id : buffer)
 								users.add(showUser(id));
-							retry = false;							// Do not retry anymore
+							retry = false;								// Do not retry anymore
 							break;
-						case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
-						case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
-							Utils.sleep(5000);						// Retry crawling 5 seconds later
+						case HttpResponseCode.INTERNAL_SERVER_ERROR:	// 500: Something is broken. Please post to the group so the Twitter team can investigate.
+						case HttpResponseCode.SERVICE_UNAVAILABLE:		// 503: The Twitter servers are up, but overloaded with requests.
+						case -1:										// Caused by: java.net.UnknownHostException: api.twitter.com
+							Utils.sleep(5000);							// Retry crawling 5 seconds later
 							break;
 						}
 					}
@@ -195,18 +198,19 @@ public class Engine {
 				User user = app.twitter.showUser(userID);
 				return user;
 			} catch (TwitterException te) {
-				if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
+				if (te.exceededRateLimitation()) {					// 429: Rate limit exceeded
 					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
 				} else {
 					switch (te.getStatusCode()) {
-					default:									// Unknown exception occurs
+					default:										// Unknown exception occurs
 						te.printStackTrace();
-					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
-					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
+					case HttpResponseCode.UNAUTHORIZED:				// 401: Authentication credentials were missing or incorrect.
+					case HttpResponseCode.NOT_FOUND:				// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
 						return null;
-					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
-					case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
-						Utils.sleep(5000);						// Retry crawling 5 seconds later
+					case HttpResponseCode.INTERNAL_SERVER_ERROR:	// 500: Something is broken. Please post to the group so the Twitter team can investigate.
+					case HttpResponseCode.SERVICE_UNAVAILABLE:		// 503: The Twitter servers are up, but overloaded with requests.
+					case -1:										// Caused by: java.net.UnknownHostException: api.twitter.com
+						Utils.sleep(5000);							// Retry crawling 5 seconds later
 						break;
 					}
 				}
@@ -238,19 +242,20 @@ public class Engine {
 				page++;
 			} catch (TwitterException te) {
 				boolean retry = true;
-				if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
+				if (te.exceededRateLimitation()) {					// 429: Rate limit exceeded
 					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
 				} else {
 					switch (te.getStatusCode()) {
-					default:									// Unknown exception occurs
+					default:										// Unknown exception occurs
 						te.printStackTrace();
-					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
-					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
-						retry = false;							// Do not retry anymore
+					case HttpResponseCode.UNAUTHORIZED:				// 401: Authentication credentials were missing or incorrect.
+					case HttpResponseCode.NOT_FOUND:				// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
+						retry = false;								// Do not retry anymore
 						break;
-					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
-					case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
-						Utils.sleep(5000);						// Retry crawling 5 seconds later
+					case HttpResponseCode.INTERNAL_SERVER_ERROR:	// 500: Something is broken. Please post to the group so the Twitter team can investigate.
+					case HttpResponseCode.SERVICE_UNAVAILABLE:		// 503: The Twitter servers are up, but overloaded with requests.
+					case -1:										// Caused by: java.net.UnknownHostException: api.twitter.com
+						Utils.sleep(5000);							// Retry crawling 5 seconds later
 						break;
 					}
 				}
@@ -368,19 +373,20 @@ public class Engine {
 				page++;
 			} catch (TwitterException te) {
 				boolean retry = true;
-				if (te.exceededRateLimitation()) {				// 429: Rate limit exceeded
+				if (te.exceededRateLimitation()) {					// 429: Rate limit exceeded
 					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
 				} else {
 					switch (te.getStatusCode()) {
-					default:									// Unknown exception occurs
+					default:										// Unknown exception occurs
 						te.printStackTrace();
-					case HttpResponseCode.UNAUTHORIZED:			// 401: Authentication credentials were missing or incorrect.
-					case HttpResponseCode.NOT_FOUND:			// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
-						retry = false;							// Do not retry anymore
+					case HttpResponseCode.UNAUTHORIZED:				// 401: Authentication credentials were missing or incorrect.
+					case HttpResponseCode.NOT_FOUND:				// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
+						retry = false;								// Do not retry anymore
 						break;
-					case HttpResponseCode.SERVICE_UNAVAILABLE:	// 503: The Twitter servers are up, but overloaded with requests.
-					case -1:									// Caused by: java.net.UnknownHostException: api.twitter.com
-						Utils.sleep(5000);						// Retry crawling 5 seconds later
+					case HttpResponseCode.INTERNAL_SERVER_ERROR:	// 500: Something is broken. Please post to the group so the Twitter team can investigate.
+					case HttpResponseCode.SERVICE_UNAVAILABLE:		// 503: The Twitter servers are up, but overloaded with requests.
+					case -1:										// Caused by: java.net.UnknownHostException: api.twitter.com
+						Utils.sleep(5000);							// Retry crawling 5 seconds later
 						break;
 					}
 				}
