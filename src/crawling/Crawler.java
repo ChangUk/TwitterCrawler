@@ -61,10 +61,10 @@ public class Crawler {
 			if (mDBHelper.hasRecord(userID) == false) {
 				User user = engine.showUser(userID);
 				
+				// Register valid user to database
+				mDBHelper.insertUser(user);
+				
 				if (Settings.isValidUser(user)) {
-					// Register valid user to database
-					mDBHelper.insertUser(user);
-					
 					// Get following user list
 					ArrayList<Long> followings = engine.getFollowings(userID, 5000);
 					mDBHelper.insertFollowingList(userID, followings);
