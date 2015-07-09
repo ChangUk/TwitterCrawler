@@ -1,2 +1,2 @@
-# TwitterMiner
-Data analyzer for Twitter data mining (written in Java)
+# TwitterCrawler
+Crawling machine for gathering Twitter data (written in Java)

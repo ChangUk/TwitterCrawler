@@ -1,4 +1,4 @@
-package crawling;
+package crawler;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -129,17 +129,19 @@ public class Crawler {
 		
 		exeService.shutdown();
 		while (exeService.isTerminated() == false) {
-			// Wait for other running threads
+			// Do nothing and wait for other running threads
 		}
 		
-		// Close database connection
+		// Mark this task as complete and then close database connections
+		mDBHelper.setSeed(egoNetwork.getSeedUserID());
 		mDBHelper.destroy();
+		
+		// Print crawling result
+		Utils.printLog("### Current memory usage: " + Utils.getCurMemoryUsage() + " MB", false);
 		
 		// Garbage collection
 		System.gc();
 		
-		// Print crawling result
-		Utils.printLog("### Current memory usage: " + Utils.getCurMemoryUsage() + " MB", false);
 		Utils.printLog("TWITTER CRAWLING FINISHED", false);
 		Utils.printLog(Utils.getExecutingTime("Total executing time", crawling_start), true);
 	}

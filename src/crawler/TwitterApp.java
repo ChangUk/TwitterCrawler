@@ -1,4 +1,4 @@
-package crawling;
+package crawler;
 
 import java.util.Map;
 import java.util.logging.Logger;

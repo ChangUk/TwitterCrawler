@@ -1,4 +1,4 @@
-package crawling;
+package crawler;
 
 import java.io.BufferedReader;
 import java.io.File;

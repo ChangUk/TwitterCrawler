@@ -156,7 +156,7 @@ public class DBHelper {
 	public boolean createDBTables() {
 		ArrayList<String> sqls = new ArrayList<String>();
 		sqls.add("CREATE TABLE IF NOT EXISTS user ("
-				+ "id INTEGER PRIMARY KEY, isProtected INTEGER, isVerified INTEGER, lang TEXT, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, favoritesCount INTEGER, date INTEGER)");
+				+ "id INTEGER PRIMARY KEY, isSeed INTEGER, isProtected INTEGER, isVerified INTEGER, lang TEXT, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, favoritesCount INTEGER, date INTEGER)");
 		sqls.add("CREATE TABLE IF NOT EXISTS follow ("
 				+ "source INTEGER, target INTEGER, "
 				+ "FOREIGN KEY(source) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(source, target))");
@@ -167,7 +167,7 @@ public class DBHelper {
 				+ "FOREIGN KEY(user) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(user, tweet))");
 		sqls.add("CREATE TABLE IF NOT EXISTS share ("
 				+ "user INTEGER, tweet INTEGER, "
-				+ "FOREIGN KEY(user) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(user, tweet))");
+				+ "FOREIGN KEY(user) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE,	PRIMARY KEY(user, tweet))");
 		sqls.add("CREATE TABLE IF NOT EXISTS favorite ("
 				+ "user INTEGER, tweet INTEGER, "
 				+ "FOREIGN KEY(user) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(user, tweet))");
@@ -177,11 +177,17 @@ public class DBHelper {
 		return execQuery(sqls);
 	}
 	
+	public boolean setSeed(long seedUserID) {
+		if (seedUserID < 0) return false;
+		String sql = new String("UPDATE user SET isSeed = 1 WHERE id = " + seedUserID);
+		return execQuery(sql);
+	}
+	
 	public boolean insertUser(User user) {
 		if (user == null) return false;
 		String sql = new String("INSERT OR REPLACE INTO user ("
-				+ "id, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES ("
-				+ user.getId() + ", " + (user.isProtected() ? 1 : 0) + ", " + (user.isVerified() ? 1 : 0) + ", '"
+				+ "id, isSeed, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES ("
+				+ user.getId() + ", 0, " + (user.isProtected() ? 1 : 0) + ", " + (user.isVerified() ? 1 : 0) + ", '"
 				+ user.getLang() + "', " + user.getFriendsCount() + ", " + user.getFollowersCount() + ", " + user.getStatusesCount() + ", " + user.getFavouritesCount() + ", " + user.getCreatedAt().getTime() + ")");
 		return execQuery(sql);
 	}
@@ -189,19 +195,20 @@ public class DBHelper {
 	public boolean insertUsers(ArrayList<User> users) {
 		if (users == null) return false;
 		String sql = new String("INSERT OR REPLACE INTO user ("
-				+ "id, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				+ "id, isSeed, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		ArrayList<String[]> values = new ArrayList<String[]>();
 		for (User user : users) {
-			String[] value = new String[9];
+			String[] value = new String[10];
 			value[0] = String.valueOf(user.getId());
-			value[1] = String.valueOf(user.isProtected() ? 1 : 0);
-			value[2] = String.valueOf(user.isVerified() ? 1 : 0);
-			value[3] = user.getLang();
-			value[4] = String.valueOf(user.getFriendsCount());
-			value[5] = String.valueOf(user.getFollowersCount());
-			value[6] = String.valueOf(user.getStatusesCount());
-			value[7] = String.valueOf(user.getFavouritesCount());
-			value[8] = String.valueOf(user.getCreatedAt().getTime());
+			value[1] = new String("0");
+			value[2] = String.valueOf(user.isProtected() ? 1 : 0);
+			value[3] = String.valueOf(user.isVerified() ? 1 : 0);
+			value[4] = user.getLang();
+			value[5] = String.valueOf(user.getFriendsCount());
+			value[6] = String.valueOf(user.getFollowersCount());
+			value[7] = String.valueOf(user.getStatusesCount());
+			value[8] = String.valueOf(user.getFavouritesCount());
+			value[9] = String.valueOf(user.getCreatedAt().getTime());
 			values.add(value);
 		}
 		return batchQueries(sql, values);
@@ -372,36 +379,5 @@ public class DBHelper {
 		}
 		connectionPool.freeConnection(conn);
 		return latestTweetID;
-	}
-	
-	public boolean isNewRecord(User user) {
-		String sql = new String("SELECT * FROM user WHERE id = " + user.getId());
-		boolean result = false;
-		Connection conn = connectionPool.getConnection();
-		try {
-			Statement stmt = conn.createStatement();
-			ResultSet rs = stmt.executeQuery(sql);
-			if (rs.next()) {
-				boolean isProtected = (rs.getInt(2) > 0) ? true : false;
-				boolean isVerified = (rs.getInt(3) > 0) ? true : false;
-				String lang = rs.getString(4);
-				int followingsCount = rs.getInt(5);
-				int followersCount = rs.getInt(6);
-				int tweetsCount = rs.getInt(7);
-				int favoritesCount = rs.getInt(8);
-				
-				if (user.isProtected() != isProtected || user.isVerified() != isVerified || user.getLang().equals(lang) == false
-						|| user.getFriendsCount() != followingsCount || user.getFollowersCount() != followersCount || user.getStatusesCount() != tweetsCount || user.getFavouritesCount() != favoritesCount)
-					result = true;
-			} else {
-				result = true;
-			}
-			rs.close();
-			stmt.close();
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-		connectionPool.freeConnection(conn);
-		return result;
 	}
 }

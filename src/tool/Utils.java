@@ -38,35 +38,6 @@ public class Utils {
 	}
 	
 	/**
-	 * Get refined tweet message after simple text cleaning.
-	 * This task involves removing URLs and mentions marks.
-	 * @param tweet Tweet status
-	 * @return Refined tweet texts
-	 */
-	public static String simpleTweetCleaning(Status tweet) {
-		StringTokenizer st = new StringTokenizer(tweet.getText(), " \t\r\n");
-		if (tweet.isRetweet())
-			st.nextToken();
-		ArrayList<String> wordList = new ArrayList<String>();
-		while (st.hasMoreTokens()) {
-			String token = st.nextToken();
-			if (token.startsWith("@") || token.startsWith("http://") || token.startsWith("https://"))
-				continue;
-			wordList.add(token.toLowerCase());
-		}
-		
-		if (wordList.isEmpty()) {
-			return new String("");
-		} else {
-			String result = new String(wordList.get(0));
-			wordList.remove(0);
-			for (String word : wordList)
-				result = result.concat(" " + word);
-			return result;
-		}
-	}
-	
-	/**
 	 * Check if the tweet contains mentioning.
 	 * @param tweet Target tweet to be tested
 	 * @return True if the tweet contains mentioning in its text, false otherwise.
@@ -83,14 +54,14 @@ public class Utils {
 	
 	// Regular expressions (Latin)
 	public static final String REGEX_LATIN_BASIC = "\\p{InBasic_Latin}";				//	"A-Za-z";
-	public static final String REGEX_LATIN_SUPPLEMENT = "\\p{InLatin-1_Supplement}";	//	"À-ÖÙ-öù-ÿ";
-	public static final String REGEX_LATIN_EXTENDED_A = "\\p{InLatin_Extended-A}";		//	"Ā-ſ";
-	public static final String REGEX_LATIN_EXTENDED_B = "\\p{InLatin_Extended-B}";		//	"ƀ-ɏ";
+	public static final String REGEX_LATIN_SUPPLEMENT = "\\p{InLatin-1_Supplement}";	//	"�-횜횢-철첫-첼";
+	public static final String REGEX_LATIN_EXTENDED_A = "\\p{InLatin_Extended-A}";		//	"�-탓";
+	public static final String REGEX_LATIN_EXTENDED_B = "\\p{InLatin_Extended-B}";		//	"�-��";
 	public static final String REGEX_LATIN = "\\p{Latin}";								//	REGEX_LATIN_BASIC + REGEX_LATIN_SUPPLEMENT + REGEX_LATIN_EXTENDED_A + REGEX_LATIN_EXTENDED_B;
 	
 	// Regular expressions (Korean)
-	public static final String REGEX_HANGUL_JAMO = "\\p{InHangul_Jamo}";				//	"ㄱ-ㅎㅏ-ㅣ";
-	public static final String REGEX_HANGUL_SYLLABLES = "\\p{InHangul_Syllables}";		//	"가-힣";
+	public static final String REGEX_HANGUL_JAMO = "\\p{InHangul_Jamo}";				//	"�꽦-�뀕�뀖-�뀭";
+	public static final String REGEX_HANGUL_SYLLABLES = "\\p{InHangul_Syllables}";		//	"媛�-�옡";
 	public static final String REGEX_HANGUL = "\\p{Hangul}";							//	REGEX_HANGUL_JAMO + REGEX_HANGUL_SYLLABLES;
 	
 	// Regular expressions (Text)
