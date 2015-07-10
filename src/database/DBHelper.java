@@ -40,18 +40,24 @@ public class DBHelper {
 	private ConnectionPool connectionPool = null;		// Connection pool for DB read
 	
 	public DBHelper() {
+		// If the location for storing database does not exist, generate the path
+		File dataPath = new File(Settings.PATH_DATA);
+		if (dataPath.exists() == false)
+			dataPath.mkdirs();
+		
+		// Backup existing database file
+		makeBackupFile();
+		
+		// Create DB connection and DB tables
+		makeDBConnection();
+		createDBTables();
+	}
+	
+	public synchronized void makeDBConnection() {
 		try {
-			// If the location to store database does not exist, generate the path
-			File dataPath = new File(Settings.PATH_DATA);
-			if (dataPath.exists() == false)
-				dataPath.mkdirs();
-			
 			// Register the Driver to the jbdc.driver java property
 			driver = (Driver) Class.forName(DRIVER_NAME).newInstance();
 			DriverManager.registerDriver(driver);
-			
-			// Backup existing database file
-			makeBackupFile();
 			
 			// If database does not exist, then it will be created automatically
 			SQLiteConfig config = new SQLiteConfig();
@@ -66,13 +72,14 @@ public class DBHelper {
 			config.enforceForeignKeys(true);
 			connectionPool = new ConnectionPool(DBPATH, poolConfig.toProperties());
 			connectionPool.setMaxPoolSize(1000);
-			
-			// Create DB tables
-			createDBTables();
-		} catch (ClassNotFoundException e) {
 		} catch (SQLException e) {
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
 		} catch (IllegalAccessException e) {
+			e.printStackTrace();
 		} catch (InstantiationException e) {
+			e.printStackTrace();
 		}
 	}
 	

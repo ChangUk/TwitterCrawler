@@ -32,6 +32,7 @@ public class Crawler {
 		this.queue = new LinkedList<Long>();
 		this.exeService = Executors.newFixedThreadPool(1000);
 		this.mDBHelper = DBHelper.getSingleton();
+		mDBHelper.makeDBConnection();
 	}
 	
 	public void run(EgoNetwork egoNetwork) {
