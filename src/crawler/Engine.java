@@ -190,7 +190,7 @@ public class Engine {
 	 * @return User instance
 	 */
 	public User showUser(long userID) {
-		String endpoint = "/users/show/:id";
+		String endpoint = "/users/show";
 		
 		while (true) {
 			TwitterApp app = mAppManager.getAvailableApp(endpoint);

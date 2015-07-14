@@ -48,30 +48,10 @@ public class DBHelper {
 		// Backup existing database file
 		makeBackupFile();
 		
-		// Create DB connection and DB tables
-		makeDBConnection();
-		createDBTables();
-	}
-	
-	public synchronized void makeDBConnection() {
 		try {
 			// Register the Driver to the jbdc.driver java property
 			driver = (Driver) Class.forName(DRIVER_NAME).newInstance();
 			DriverManager.registerDriver(driver);
-			
-			// If database does not exist, then it will be created automatically
-			SQLiteConfig config = new SQLiteConfig();
-			config.setJournalMode(JournalMode.WAL);
-			config.enforceForeignKeys(true);
-			conn = DriverManager.getConnection(DBPATH, config.toProperties());
-			conn.setAutoCommit(false);
-			
-			// Create connection pool
-			SQLiteConfig poolConfig = new SQLiteConfig();
-			poolConfig.setReadOnly(true);
-			config.enforceForeignKeys(true);
-			connectionPool = new ConnectionPool(DBPATH, poolConfig.toProperties());
-			connectionPool.setMaxPoolSize(1000);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} catch (ClassNotFoundException e) {
@@ -81,37 +61,85 @@ public class DBHelper {
 		} catch (InstantiationException e) {
 			e.printStackTrace();
 		}
-	}
-	
-	public synchronized void destroy() {
-		try {
-			if (conn != null)
-				conn.close();
-			if (connectionPool != null)
-				connectionPool.closeAll();
-			
-			// Removes the specified driver from the DriverManager's list of registered drivers
-			DriverManager.deregisterDriver(driver);
-			
-			// Delete backup file
-			File backup = new File(BACKUP);
-			if (backup.exists())
-				Files.delete(backup.toPath());
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		
+		// Create DB connection and DB tables
+		makeConnections();
+		createDBTables();
 	}
 	
 	private void makeBackupFile() {
 		File existingDatabase = new File(Settings.PATH_DATA + DBNAME);
 		if (existingDatabase.exists()) {
+			deleteBackupFile();
+			
 			File backup = new File(BACKUP);
 			try {
 				Files.copy(existingDatabase.toPath(), backup.toPath());
 			} catch (IOException e) {
+				e.printStackTrace();
 			}
+		}
+	}
+	
+	private void deleteBackupFile() {
+		try {
+			File backup = new File(BACKUP);
+			if (backup.exists())
+				Files.delete(backup.toPath());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public synchronized boolean makeConnections() {
+		try {
+			// If database does not exist, then it will be created automatically
+			if (conn == null || conn.isClosed()) {
+				SQLiteConfig config = new SQLiteConfig();
+				config.setJournalMode(JournalMode.WAL);
+				config.enforceForeignKeys(true);
+				conn = DriverManager.getConnection(DBPATH, config.toProperties());
+				conn.setAutoCommit(false);
+			}
+			
+			// Create connection pool
+			if (connectionPool == null) {
+				SQLiteConfig poolConfig = new SQLiteConfig();
+				poolConfig.setReadOnly(true);
+				poolConfig.enforceForeignKeys(true);
+				connectionPool = new ConnectionPool(DBPATH, poolConfig.toProperties());
+				connectionPool.setMaxPoolSize(1000);
+			}
+			
+			return true;
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+	
+	public synchronized void closeConnections() {
+		try {
+			if (conn != null) {
+				conn.close();
+				conn = null;
+			}
+			if (connectionPool != null) {
+				connectionPool.closeAll();
+				connectionPool = null;
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public synchronized void destroy() {
+		try {
+			// Removes the specified driver from the DriverManager's list of registered drivers
+			if (driver != null)
+				DriverManager.deregisterDriver(driver);
+		} catch (SQLException e) {
+			e.printStackTrace();
 		}
 	}
 	
@@ -163,7 +191,7 @@ public class DBHelper {
 	public boolean createDBTables() {
 		ArrayList<String> sqls = new ArrayList<String>();
 		sqls.add("CREATE TABLE IF NOT EXISTS user ("
-				+ "id INTEGER PRIMARY KEY, isSeed INTEGER, isProtected INTEGER, isVerified INTEGER, lang TEXT, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, favoritesCount INTEGER, date INTEGER)");
+				+ "id INTEGER PRIMARY KEY, isSeed INTEGER, isComplete INTEGER, isProtected INTEGER, isVerified INTEGER, lang TEXT, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, favoritesCount INTEGER, date INTEGER)");
 		sqls.add("CREATE TABLE IF NOT EXISTS follow ("
 				+ "source INTEGER, target INTEGER, "
 				+ "FOREIGN KEY(source) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(source, target))");
@@ -193,8 +221,8 @@ public class DBHelper {
 	public boolean insertUser(User user) {
 		if (user == null) return false;
 		String sql = new String("INSERT OR REPLACE INTO user ("
-				+ "id, isSeed, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES ("
-				+ user.getId() + ", 0, " + (user.isProtected() ? 1 : 0) + ", " + (user.isVerified() ? 1 : 0) + ", '"
+				+ "id, isSeed, isComplete, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES ("
+				+ user.getId() + ", 0, 0, " + (user.isProtected() ? 1 : 0) + ", " + (user.isVerified() ? 1 : 0) + ", '"
 				+ user.getLang() + "', " + user.getFriendsCount() + ", " + user.getFollowersCount() + ", " + user.getStatusesCount() + ", " + user.getFavouritesCount() + ", " + user.getCreatedAt().getTime() + ")");
 		return execQuery(sql);
 	}
@@ -202,20 +230,21 @@ public class DBHelper {
 	public boolean insertUsers(ArrayList<User> users) {
 		if (users == null) return false;
 		String sql = new String("INSERT OR REPLACE INTO user ("
-				+ "id, isSeed, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				+ "id, isSeed, isComplete, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		ArrayList<String[]> values = new ArrayList<String[]>();
 		for (User user : users) {
-			String[] value = new String[10];
+			String[] value = new String[11];
 			value[0] = String.valueOf(user.getId());
 			value[1] = new String("0");
-			value[2] = String.valueOf(user.isProtected() ? 1 : 0);
-			value[3] = String.valueOf(user.isVerified() ? 1 : 0);
-			value[4] = user.getLang();
-			value[5] = String.valueOf(user.getFriendsCount());
-			value[6] = String.valueOf(user.getFollowersCount());
-			value[7] = String.valueOf(user.getStatusesCount());
-			value[8] = String.valueOf(user.getFavouritesCount());
-			value[9] = String.valueOf(user.getCreatedAt().getTime());
+			value[2] = new String("0");
+			value[3] = String.valueOf(user.isProtected() ? 1 : 0);
+			value[4] = String.valueOf(user.isVerified() ? 1 : 0);
+			value[5] = user.getLang();
+			value[6] = String.valueOf(user.getFriendsCount());
+			value[7] = String.valueOf(user.getFollowersCount());
+			value[8] = String.valueOf(user.getStatusesCount());
+			value[9] = String.valueOf(user.getFavouritesCount());
+			value[10] = String.valueOf(user.getCreatedAt().getTime());
 			values.add(value);
 		}
 		return batchQueries(sql, values);
@@ -368,6 +397,30 @@ public class DBHelper {
 		}
 		connectionPool.freeConnection(conn);
 		return result;
+	}
+	
+	public boolean isComplete(long userID) {
+		String sql = new String("SELECT isComplete FROM user WHERE id = " + userID);
+		boolean result = false;
+		Connection conn = connectionPool.getConnection();
+		try {
+			Statement stmt = conn.createStatement();
+			ResultSet rs = stmt.executeQuery(sql);
+			if (rs.next())
+				result = (rs.getInt(1) == 1 ? true : false);
+			rs.close();
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		connectionPool.freeConnection(conn);
+		return result;
+	}
+	
+	public boolean setUserComplete(long seedUserID) {
+		if (seedUserID < 0) return false;
+		String sql = new String("UPDATE user SET isComplete = 1 WHERE id = " + seedUserID);
+		return execQuery(sql);
 	}
 	
 	public long getLatestTweetID(long userID) {

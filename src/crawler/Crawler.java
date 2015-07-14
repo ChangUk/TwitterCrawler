@@ -32,7 +32,6 @@ public class Crawler {
 		this.queue = new LinkedList<Long>();
 		this.exeService = Executors.newFixedThreadPool(1000);
 		this.mDBHelper = DBHelper.getSingleton();
-		mDBHelper.makeDBConnection();
 	}
 	
 	public void run(EgoNetwork egoNetwork) {
@@ -40,6 +39,9 @@ public class Crawler {
 		
 		Utils.printLog("TWITTER CRAWLING STARTED: " + egoNetwork.getSeedUserID() + " - " + Utils.getCurrentTime(), false);
 		long crawling_start = System.currentTimeMillis();
+		
+		// Make DB connection
+		mDBHelper.makeConnections();
 		
 		// Lookup seed user and put it into BFS queue
 		User seedUser = engine.showUser(egoNetwork.getSeedUserID());
@@ -59,13 +61,13 @@ public class Crawler {
 			long userID = queue.poll();
 			nNodesToVisit[curLevel] -= 1;
 			
-			if (mDBHelper.hasRecord(userID) == false) {
+			if (mDBHelper.isComplete(userID) == false) {
 				User user = engine.showUser(userID);
 				
 				// Register valid user to database
 				mDBHelper.insertUser(user);
 				
-				if (Settings.isValidUser(user)) {
+				if (Settings.isNormalUser(user)) {
 					// Get following user list
 					ArrayList<Long> followings = engine.getFollowings(userID, 5000);
 					mDBHelper.insertFollowingList(userID, followings);
@@ -90,6 +92,9 @@ public class Crawler {
 							
 							ArrayList<Status> favorites = engine.getFavorites(userID);
 							mDBHelper.insertFavoriteHistory(userID, favorites);
+							
+							// Mark this user completed
+							mDBHelper.setUserComplete(userID);
 						}
 					});
 				}
@@ -135,7 +140,7 @@ public class Crawler {
 		
 		// Mark this task as complete and then close database connections
 		mDBHelper.setSeed(egoNetwork.getSeedUserID());
-		mDBHelper.destroy();
+		mDBHelper.closeConnections();
 		
 		// Print crawling result
 		Utils.printLog("### Current memory usage: " + Utils.getCurMemoryUsage() + " MB", false);
