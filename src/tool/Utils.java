@@ -19,8 +19,15 @@ public class Utils {
 	 * @param list ArrayList type data
 	 * @return Array type of data
 	 */
-	public static long[] getArray(ArrayList<Long> list) {
+	public static long[] getLongArray(ArrayList<Long> list) {
 		long[] array = new long[list.size()];
+		for (int i = 0; i < array.length; i++)
+			array[i] = list.get(i);
+		return array;
+	}
+	
+	public static String[] getStringArray(ArrayList<String> list) {
+		String[] array = new String[list.size()];
 		for (int i = 0; i < array.length; i++)
 			array[i] = list.get(i);
 		return array;

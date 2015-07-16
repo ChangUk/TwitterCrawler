@@ -31,13 +31,13 @@ public class Settings {
 			return false;
 		if (user.isVerified())
 			return false;
-		if (user.getLang().equals("en") == false)
+		if (user.getLang().equals("ko") == false)
 			return false;
-		if (user.getFriendsCount() > 5000)
+		if (user.getFriendsCount() > 500)
 			return false;
-		if (user.getFollowersCount() > 5000)
+		if (user.getFollowersCount() > 500)
 			return false;
-		if (user.getStatusesCount() > 100)
+		if (user.getStatusesCount() < 100)
 			return false;
 		return true;
 	}

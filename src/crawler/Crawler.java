@@ -44,7 +44,7 @@ public class Crawler {
 		mDBHelper.makeConnections();
 		
 		// Lookup seed user and put it into BFS queue
-		User seedUser = engine.showUser(egoNetwork.getSeedUserID());
+		User seedUser = engine.showUserByID(egoNetwork.getSeedUserID());
 		if (seedUser == null) return;
 		queue.offer(seedUser.getId());
 		
@@ -62,7 +62,7 @@ public class Crawler {
 			nNodesToVisit[curLevel] -= 1;
 			
 			if (mDBHelper.isComplete(userID) == false) {
-				User user = engine.showUser(userID);
+				User user = engine.showUserByID(userID);
 				
 				// Register valid user to database
 				mDBHelper.insertUser(user);

@@ -138,6 +138,9 @@ public class DBHelper {
 			// Removes the specified driver from the DriverManager's list of registered drivers
 			if (driver != null)
 				DriverManager.deregisterDriver(driver);
+			
+			// If there is a backup file, remove it
+			deleteBackupFile();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}

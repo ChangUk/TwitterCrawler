@@ -8,6 +8,8 @@ import tool.Utils;
 import twitter4j.HttpResponseCode;
 import twitter4j.IDs;
 import twitter4j.Paging;
+import twitter4j.Query;
+import twitter4j.QueryResult;
 import twitter4j.ResponseList;
 import twitter4j.Status;
 import twitter4j.TwitterException;
@@ -130,7 +132,7 @@ public class Engine {
 	 * @param userList Users to be looked up
 	 * @return User instances
 	 */
-	public ArrayList<User> lookupUsers(ArrayList<Long> userList) {
+	public ArrayList<User> lookupUsersByID(ArrayList<Long> userList) {
 		String endpoint = "/users/lookup";
 		ArrayList<User> users = new ArrayList<User>();
 		
@@ -144,7 +146,7 @@ public class Engine {
 				cursor++;
 			}
 			if (bufferList.isEmpty()) break;
-			long[] buffer = Utils.getArray(bufferList);
+			long[] buffer = Utils.getLongArray(bufferList);
 			
 			// Lookup buffer
 			while (true) {
@@ -166,7 +168,61 @@ public class Engine {
 						case HttpResponseCode.NOT_FOUND:				// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
 							System.out.println("Lookup error: " + te.getStatusCode() + ", buffer: " + buffer);
 							for (long id : buffer)
-								users.add(showUser(id));
+								users.add(showUserByID(id));
+							retry = false;								// Do not retry anymore
+							break;
+						case HttpResponseCode.INTERNAL_SERVER_ERROR:	// 500: Something is broken. Please post to the group so the Twitter team can investigate.
+						case HttpResponseCode.SERVICE_UNAVAILABLE:		// 503: The Twitter servers are up, but overloaded with requests.
+						case -1:										// Caused by: java.net.UnknownHostException: api.twitter.com
+							Utils.sleep(5000);							// Retry crawling 5 seconds later
+							break;
+						}
+					}
+					if (retry == false) break;
+				}
+			}
+		}
+		
+		return users;
+	}
+	
+	public ArrayList<User> lookupUsersByScreenName(ArrayList<String> userList) {
+		String endpoint = "/users/lookup";
+		ArrayList<User> users = new ArrayList<User>();
+		
+		int cursor = 0;
+		while (cursor < userList.size()) {
+			// Make buffer space and fill it with IDs
+			ArrayList<String> bufferList = new ArrayList<String>();
+			for (int i = cursor; i < userList.size() && bufferList.size() < 100; i++) {
+				String screenName = userList.get(i);
+				bufferList.add(screenName);
+				cursor++;
+			}
+			if (bufferList.isEmpty()) break;
+			String[] buffer = Utils.getStringArray(bufferList);
+			
+			// Lookup buffer
+			while (true) {
+				TwitterApp app = mAppManager.getAvailableApp(endpoint);
+				try {
+					ResponseList<User> testset = app.twitter.lookupUsers(buffer);
+					for (User user : testset)
+						users.add(user);
+					break;
+				} catch (TwitterException te) {
+					boolean retry = true;
+					if (te.exceededRateLimitation()) {					// 429: Rate limit exceeded
+						mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
+					} else {
+						switch (te.getStatusCode()) {
+						default:										// Unknown exception occurs
+							te.printStackTrace();
+						case HttpResponseCode.UNAUTHORIZED:				// 401: Authentication credentials were missing or incorrect.
+						case HttpResponseCode.NOT_FOUND:				// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
+							System.out.println("Lookup error: " + te.getStatusCode() + ", buffer: " + buffer);
+							for (String id : buffer)
+								users.add(showUserByScreenName(id));
 							retry = false;								// Do not retry anymore
 							break;
 						case HttpResponseCode.INTERNAL_SERVER_ERROR:	// 500: Something is broken. Please post to the group so the Twitter team can investigate.
@@ -189,13 +245,42 @@ public class Engine {
 	 * @param userID
 	 * @return User instance
 	 */
-	public User showUser(long userID) {
+	public User showUserByID(long userID) {
 		String endpoint = "/users/show";
 		
 		while (true) {
 			TwitterApp app = mAppManager.getAvailableApp(endpoint);
 			try {
 				User user = app.twitter.showUser(userID);
+				return user;
+			} catch (TwitterException te) {
+				if (te.exceededRateLimitation()) {					// 429: Rate limit exceeded
+					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
+				} else {
+					switch (te.getStatusCode()) {
+					default:										// Unknown exception occurs
+						te.printStackTrace();
+					case HttpResponseCode.UNAUTHORIZED:				// 401: Authentication credentials were missing or incorrect.
+					case HttpResponseCode.NOT_FOUND:				// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
+						return null;
+					case HttpResponseCode.INTERNAL_SERVER_ERROR:	// 500: Something is broken. Please post to the group so the Twitter team can investigate.
+					case HttpResponseCode.SERVICE_UNAVAILABLE:		// 503: The Twitter servers are up, but overloaded with requests.
+					case -1:										// Caused by: java.net.UnknownHostException: api.twitter.com
+						Utils.sleep(5000);							// Retry crawling 5 seconds later
+						break;
+					}
+				}
+			}
+		}
+	}
+	
+	public User showUserByScreenName(String username) {
+		String endpoint = "/users/show";
+		
+		while (true) {
+			TwitterApp app = mAppManager.getAvailableApp(endpoint);
+			try {
+				User user = app.twitter.showUser(username);
 				return user;
 			} catch (TwitterException te) {
 				if (te.exceededRateLimitation()) {					// 429: Rate limit exceeded
@@ -395,5 +480,52 @@ public class Engine {
 		}
 		
 		return favorites;
+	}
+	
+	public ArrayList<Status> searchTweets(String queryString, int num) {
+		String endpoint = "/search/tweets";
+		ArrayList<Status> tweets = new ArrayList<Status>();
+		
+		Query query = new Query(queryString);
+		query.setCount(100);
+		QueryResult result = null;
+		
+		while (true) {
+			TwitterApp app = mAppManager.getAvailableApp(endpoint);
+			try {
+				result = app.twitter.search(query);
+				tweets.addAll(result.getTweets());
+				
+				if (tweets.size() > num)
+					break;
+				
+				if (result.hasNext())
+					query = result.nextQuery();
+				else
+					break;
+			} catch (TwitterException te) {
+				boolean retry = true;
+				if (te.exceededRateLimitation()) {					// 429: Rate limit exceeded
+					mAppManager.registerLimitedApp(app, endpoint, te.getRateLimitStatus().getSecondsUntilReset());
+				} else {
+					switch (te.getStatusCode()) {
+					default:										// Unknown exception occurs
+						te.printStackTrace();
+					case HttpResponseCode.UNAUTHORIZED:				// 401: Authentication credentials were missing or incorrect.
+					case HttpResponseCode.NOT_FOUND:				// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
+						retry = false;								// Do not retry anymore
+						break;
+					case HttpResponseCode.INTERNAL_SERVER_ERROR:	// 500: Something is broken. Please post to the group so the Twitter team can investigate.
+					case HttpResponseCode.SERVICE_UNAVAILABLE:		// 503: The Twitter servers are up, but overloaded with requests.
+					case -1:										// Caused by: java.net.UnknownHostException: api.twitter.com
+						Utils.sleep(5000);							// Retry crawling 5 seconds later
+						break;
+					}
+				}
+				if (retry == false) break;
+			}
+		}
+		
+		return tweets;
 	}
 }
