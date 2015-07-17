@@ -196,22 +196,17 @@ public class DBHelper {
 		sqls.add("CREATE TABLE IF NOT EXISTS user ("
 				+ "id INTEGER PRIMARY KEY, isSeed INTEGER, isComplete INTEGER, isProtected INTEGER, isVerified INTEGER, lang TEXT, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, favoritesCount INTEGER, date INTEGER)");
 		sqls.add("CREATE TABLE IF NOT EXISTS follow ("
-				+ "source INTEGER, target INTEGER, "
-				+ "FOREIGN KEY(source) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(source, target))");
+				+ "source INTEGER, target INTEGER, PRIMARY KEY(source, target))");
 		sqls.add("CREATE TABLE IF NOT EXISTS tweet ("
 				+ "id INTEGER PRIMARY KEY, author INTEGER, text TEXT, date INTEGER)");
 		sqls.add("CREATE TABLE IF NOT EXISTS retweet ("
-				+ "user INTEGER, tweet INTEGER, "
-				+ "FOREIGN KEY(user) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(user, tweet))");
+				+ "user INTEGER, tweet INTEGER, PRIMARY KEY(user, tweet))");
 		sqls.add("CREATE TABLE IF NOT EXISTS share ("
-				+ "user INTEGER, tweet INTEGER, "
-				+ "FOREIGN KEY(user) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE,	PRIMARY KEY(user, tweet))");
+				+ "user INTEGER, tweet INTEGER, PRIMARY KEY(user, tweet))");
 		sqls.add("CREATE TABLE IF NOT EXISTS favorite ("
-				+ "user INTEGER, tweet INTEGER, "
-				+ "FOREIGN KEY(user) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(user, tweet))");
+				+ "user INTEGER, tweet INTEGER, PRIMARY KEY(user, tweet))");
 		sqls.add("CREATE TABLE IF NOT EXISTS mention ("
-				+ "source INTEGER, target INTEGER, date INTEGER, "
-				+ "FOREIGN KEY(source) REFERENCES user(id) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY(source, target, date))");
+				+ "source INTEGER, target INTEGER, date INTEGER, PRIMARY KEY(source, target, date))");
 		return execQuery(sqls);
 	}
 	
@@ -283,8 +278,25 @@ public class DBHelper {
 		return batchQueries(sql, values);
 	}
 	
+	public boolean insertFollowerList(long userID, ArrayList<Long> followerList) {
+		String sql = new String("INSERT OR IGNORE INTO follow (source, target) VALUES (?, ?)");
+		ArrayList<String[]> values = new ArrayList<String[]>();
+		for (long followerID : followerList) {
+			String[] value = new String[2];
+			value[0] = String.valueOf(followerID);
+			value[1] = String.valueOf(userID);
+			values.add(value);
+		}
+		return batchQueries(sql, values);
+	}
+	
 	public boolean deleteFollowingList(long userID) {
 		String sql = new String("DELETE FROM follow WHERE source = " + userID);
+		return execQuery(sql);
+	}
+	
+	public boolean deleteFollowerList(long userID) {
+		String sql = new String("DELETE FROM follow WHERE target = " + userID);
 		return execQuery(sql);
 	}
 	
