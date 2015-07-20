@@ -10,10 +10,10 @@ import java.util.HashMap;
 import java.util.logging.Logger;
 
 import tool.CircularQueue;
-import main.Settings;
 
 public class AppManager {
 	private static AppManager mInstance = null;
+	public final String PATH_APPS = "../TwitterApp.dat";
 	
 	private CircularQueue<TwitterApp> mAppQueue = null;
 	public HashMap<String, ArrayList<TwitterApp>> limitedEndpoints;
@@ -41,7 +41,7 @@ public class AppManager {
 	
 	public boolean loadTwitterApps() {
 		try {
-			File file = new File(Settings.PATH_APPS);
+			File file = new File(PATH_APPS);
 			FileReader fr = new FileReader(file);
 			BufferedReader br = new BufferedReader(fr);
 			
@@ -58,7 +58,7 @@ public class AppManager {
 			br.close();
 			fr.close();
 		} catch (FileNotFoundException fnfe) {
-			System.out.println("ERROR: No TwitterApp data - " + Settings.PATH_APPS);
+			System.out.println("ERROR: No TwitterApp data - " + PATH_APPS);
 			return false;
 		} catch (IOException ioe) {
 			return false;

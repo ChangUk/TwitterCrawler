@@ -9,13 +9,13 @@ import twitter4j.User;
 
 public class TwitterCrawler {
 	public static void main(String[] arg) {
-		// Finding Seed Candidates
-		SeedFinder finder = new SeedFinder();
-		ArrayList<User> seedCandidates = finder.getSeedCandidates();
-		for (User candidate : seedCandidates) {
-			if (Settings.isGoodSeedUser(candidate))
-				System.out.println(candidate.getId());
-		}
+//		// Finding Seed Candidates
+//		SeedFinder finder = new SeedFinder();
+//		ArrayList<User> seedCandidates = finder.getSeedCandidates();
+//		for (User candidate : seedCandidates) {
+//			if (Settings.isGoodSeedUser(candidate))
+//				System.out.println(candidate.getId());
+//		}
 		
 		// Crawling for each network
 		ArrayList<Long> seedList = new ArrayList<Long>();

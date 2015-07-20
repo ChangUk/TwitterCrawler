@@ -10,8 +10,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.StringTokenizer;
 
+import database.ConnectionManager;
 import twitter4j.Status;
-import main.Settings;
 
 public class Utils {
 	/**
@@ -205,7 +205,7 @@ public class Utils {
 		if (flush == true) {
 			PrintWriter writer = null;
 			try {
-				writer = new PrintWriter(Settings.PATH_DATA + "crawling_info.log", "utf-8");
+				writer = new PrintWriter(ConnectionManager.PATH_DATA + "crawling_info.log", "utf-8");
 				writer.print(msgLog);
 				writer.close();
 			} catch (UnsupportedEncodingException uee) {

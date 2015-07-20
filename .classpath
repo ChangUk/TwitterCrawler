@@ -8,5 +8,10 @@
 			<attribute name="javadoc_location" value="jar:platform:/resource/TwitterCrawler/lib/twitter4j-core-4.0.4-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="lib/mariadb-java-client-1.2.0.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:platform:/resource/TwitterCrawler/lib/mariadb-java-client-1.2.0-javadoc.jar!/"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

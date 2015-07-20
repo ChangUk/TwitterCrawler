@@ -14,8 +14,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 
-import main.Settings;
-
 import org.sqlite.SQLiteConfig;
 import org.sqlite.SQLiteConfig.JournalMode;
 
@@ -30,18 +28,13 @@ public class DBHelper {
 		return (mInstance != null) ? mInstance : (mInstance = new DBHelper());
 	}
 	
-	private final String DBNAME = "TwitterData.sqlite";
-	private final String DBPATH = "jdbc:sqlite:" + Settings.PATH_DATA + DBNAME;
-	private final String BACKUP = Settings.PATH_DATA + DBNAME + ".backup";
-	private final String DRIVER_NAME = "org.sqlite.JDBC";
-	
 	private Driver driver = null;						// Database driver
 	private Connection conn = null;						// Connection for DB write
 	private ConnectionPool connectionPool = null;		// Connection pool for DB read
 	
 	public DBHelper() {
 		// If the location for storing database does not exist, generate the path
-		File dataPath = new File(Settings.PATH_DATA);
+		File dataPath = new File(ConnectionManager.PATH_DATA);
 		if (dataPath.exists() == false)
 			dataPath.mkdirs();
 		
@@ -50,7 +43,8 @@ public class DBHelper {
 		
 		try {
 			// Register the Driver to the jbdc.driver java property
-			driver = (Driver) Class.forName(DRIVER_NAME).newInstance();
+			System.out.println(ConnectionManager.getDriverName());
+			driver = (Driver) Class.forName(ConnectionManager.getDriverName()).newInstance();
 			DriverManager.registerDriver(driver);
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -68,11 +62,11 @@ public class DBHelper {
 	}
 	
 	private void makeBackupFile() {
-		File existingDatabase = new File(Settings.PATH_DATA + DBNAME);
+		File existingDatabase = new File(ConnectionManager.getDatabasePath());
 		if (existingDatabase.exists()) {
 			deleteBackupFile();
 			
-			File backup = new File(BACKUP);
+			File backup = new File(ConnectionManager.getBackupPath());
 			try {
 				Files.copy(existingDatabase.toPath(), backup.toPath());
 			} catch (IOException e) {
@@ -83,7 +77,7 @@ public class DBHelper {
 	
 	private void deleteBackupFile() {
 		try {
-			File backup = new File(BACKUP);
+			File backup = new File(ConnectionManager.getBackupPath());
 			if (backup.exists())
 				Files.delete(backup.toPath());
 		} catch (IOException e) {
@@ -93,22 +87,37 @@ public class DBHelper {
 	
 	public synchronized boolean makeConnections() {
 		try {
-			// If database does not exist, then it will be created automatically
-			if (conn == null || conn.isClosed()) {
-				SQLiteConfig config = new SQLiteConfig();
-				config.setJournalMode(JournalMode.WAL);
-				config.enforceForeignKeys(true);
-				conn = DriverManager.getConnection(DBPATH, config.toProperties());
-				conn.setAutoCommit(false);
-			}
-			
-			// Create connection pool
-			if (connectionPool == null) {
-				SQLiteConfig poolConfig = new SQLiteConfig();
-				poolConfig.setReadOnly(true);
-				poolConfig.enforceForeignKeys(true);
-				connectionPool = new ConnectionPool(DBPATH, poolConfig.toProperties());
-				connectionPool.setMaxPoolSize(1000);
+			switch (ConnectionManager.getDatabaseType()) {
+			case SQLITE:
+				// If database does not exist, then it will be created automatically
+				if (conn == null || conn.isClosed()) {
+					SQLiteConfig config = new SQLiteConfig();
+					config.setJournalMode(JournalMode.WAL);
+					conn = DriverManager.getConnection(ConnectionManager.getConnectionURL(), config.toProperties());
+					conn.setAutoCommit(false);
+				}
+				
+				// Create connection pool
+				if (connectionPool == null) {
+					SQLiteConfig poolConfig = new SQLiteConfig();
+					poolConfig.setReadOnly(true);
+					connectionPool = new ConnectionPool(ConnectionManager.getConnectionURL(), poolConfig.toProperties());
+					connectionPool.setMaxPoolSize(1000);
+				}
+				break;
+			case MARIADB:
+				// If database does not exist, then it will be created automatically
+				if (conn == null || conn.isClosed()) {
+					conn = DriverManager.getConnection(ConnectionManager.getConnectionURL());
+					conn.setAutoCommit(false);
+				}
+				
+				// Create connection pool
+				if (connectionPool == null) {
+					connectionPool = new ConnectionPool(ConnectionManager.getConnectionURL());
+					connectionPool.setMaxPoolSize(1000);
+				}
+				break;
 			}
 			
 			return true;

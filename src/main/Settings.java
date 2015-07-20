@@ -3,9 +3,6 @@ package main;
 import twitter4j.User;
 
 public class Settings {
-	public static final String PATH_APPS = "../TwitterApp.dat";
-	public static final String PATH_DATA = "../Data/TwitterData/";
-	
 	public static boolean isNormalUser(User user) {
 		if (user == null)
 			return false;

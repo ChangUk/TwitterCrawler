@@ -18,7 +18,7 @@ public class ConnectionPool {
 	private Properties properties;		// Connection properties
 	private int maxConn;				// Allow limit-less multiple connections if this value is 0.
 	private String URL;					// Path of database
-	private String user;				// Access user ID
+	private String userID;				// Access user ID
 	private String password;			// Access user password
 	
 	public ConnectionPool(String URL) {
@@ -27,7 +27,7 @@ public class ConnectionPool {
 		this.properties = null;
 		this.maxConn = 0;
 		this.URL = URL;
-		this.user = null;
+		this.userID = null;
 		this.password = null;
 	}
 	
@@ -37,7 +37,7 @@ public class ConnectionPool {
 		this.properties = properties;
 		this.maxConn = 0;
 		this.URL = URL;
-		this.user = null;
+		this.userID = null;
 		this.password = null;
 	}
 	
@@ -106,13 +106,13 @@ public class ConnectionPool {
 	public Connection getNewConnection() {
 		Connection newConnection = null;
 		try {
-			if (user == null) {
+			if (userID == null) {
 				if (properties == null)
 					newConnection = DriverManager.getConnection(URL);
 				else
 					newConnection = DriverManager.getConnection(URL, properties);
 			} else
-				newConnection = DriverManager.getConnection(URL, user, password);
+				newConnection = DriverManager.getConnection(URL, userID, password);
 		} catch (SQLException e) {
 			return null;
 		}
