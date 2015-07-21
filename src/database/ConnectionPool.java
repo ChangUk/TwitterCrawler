@@ -41,6 +41,16 @@ public class ConnectionPool {
 		this.password = null;
 	}
 	
+	public ConnectionPool(String URL, String userID, String userPwd) {
+		this.freeConnections = new LinkedList<Connection>();
+		this.inUseConnectionCount = 0;
+		this.properties = null;
+		this.maxConn = 0;
+		this.URL = URL;
+		this.userID = userID;
+		this.password = userPwd;
+	}
+	
 	/**
 	 * Set maximum size of connection pool.
 	 * @param num Connection pool size
@@ -58,10 +68,17 @@ public class ConnectionPool {
 		
 		// If there is no available connection,
 		if (freeConnections.isEmpty()) {
-			// If making more connections is allowed,
-			if (maxConn == 0 || inUseConnectionCount < maxConn)
-				// Create new connection
-				conn = getNewConnection();
+			try {
+				// If it is allowed to make more connections,
+				if (maxConn == 0 || inUseConnectionCount < maxConn) {
+					// Create new connection
+					conn = getNewConnection();
+					conn.setAutoCommit(false);
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+				return null;
+			}
 		} else {
 			// If there is available connection, take it.
 			conn = freeConnections.poll();

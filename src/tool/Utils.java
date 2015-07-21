@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.StringTokenizer;
 
-import database.ConnectionManager;
 import twitter4j.Status;
 
 public class Utils {
@@ -49,7 +48,10 @@ public class Utils {
 	 * @param tweet Target tweet to be tested
 	 * @return True if the tweet contains mentioning in its text, false otherwise.
 	 */
-	public static boolean containsMention(Status tweet) {
+	public static boolean isMentionTweet(Status tweet) {
+		if (tweet.getMediaEntities().length > 0)
+			return true;
+		
 		StringTokenizer st = new StringTokenizer(tweet.getText(), " \t\r\n");
 		while (st.hasMoreTokens()) {
 			String token = st.nextToken();
@@ -205,7 +207,7 @@ public class Utils {
 		if (flush == true) {
 			PrintWriter writer = null;
 			try {
-				writer = new PrintWriter(ConnectionManager.PATH_DATA + "crawling_info.log", "utf-8");
+				writer = new PrintWriter("../Data/TwitterData/crawling_info.log", "utf-8");
 				writer.print(msgLog);
 				writer.close();
 			} catch (UnsupportedEncodingException uee) {

@@ -8,12 +8,12 @@ import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import database.SQLiteAdapter;
 import main.EgoNetwork;
 import main.Settings;
 import tool.Utils;
 import twitter4j.Status;
 import twitter4j.User;
-import database.DBHelper;
 
 public class Crawler {
 	private Engine engine;
@@ -25,23 +25,27 @@ public class Crawler {
 	private ExecutorService exeService;
 	
 	// Database transaction manager
-	private DBHelper mDBHelper;
+	private SQLiteAdapter mDBAdapter;
 	
 	public Crawler() {
 		this.engine = Engine.getSingleton();
 		this.queue = new LinkedList<Long>();
 		this.exeService = Executors.newFixedThreadPool(1000);
-		this.mDBHelper = DBHelper.getSingleton();
+		this.mDBAdapter = SQLiteAdapter.getSingleton();
 	}
 	
 	public void run(EgoNetwork egoNetwork) {
 		if (egoNetwork.level() < 0) return;
 		
+		// Make DB connection
+		mDBAdapter.makeConnections();
+		
+		// Seed check
+		if (mDBAdapter.isSeed(egoNetwork.getSeedUserID()))
+			return;
+		
 		Utils.printLog("TWITTER CRAWLING STARTED: " + egoNetwork.getSeedUserID() + " - " + Utils.getCurrentTime(), false);
 		long crawling_start = System.currentTimeMillis();
-		
-		// Make DB connection
-		mDBHelper.makeConnections();
 		
 		// Lookup seed user and put it into BFS queue
 		User seedUser = engine.showUserByID(egoNetwork.getSeedUserID());
@@ -61,16 +65,16 @@ public class Crawler {
 			long userID = queue.poll();
 			nNodesToVisit[curLevel] -= 1;
 			
-			if (mDBHelper.isComplete(userID) == false) {
+			if (mDBAdapter.isComplete(userID) == false) {
 				User user = engine.showUserByID(userID);
 				
 				// Register valid user to database
-				mDBHelper.insertUser(user);
+				mDBAdapter.insertUser(user);
 				
 				if (Settings.isNormalUser(user)) {
 					// Get following user list
 					ArrayList<Long> followings = engine.getFollowings(userID, 5000);
-					mDBHelper.insertFollowingList(userID, followings);
+					mDBAdapter.insertFollowingList(userID, followings);
 					
 					// Get timeline and save into stand-alone database
 					exeService.execute(new Runnable() {
@@ -78,23 +82,23 @@ public class Crawler {
 						public void run() {
 							ArrayList<Status> timeline = engine.getTimeline(userID);
 							if (timeline.size() > 0) {
-								mDBHelper.insertTweets(timeline);
-								
+								mDBAdapter.insertTweets(timeline);
+
 								ArrayList<Status> retweets = engine.getRetweets(timeline);
-								mDBHelper.insertRetweetHistory(userID, retweets);
+								mDBAdapter.insertRetweetHistory(userID, retweets);
 								
 								ArrayList<Long> shareList = engine.getSharedTweets(timeline);
-								mDBHelper.insertShareHistory(userID, shareList);
+								mDBAdapter.insertShareHistory(userID, shareList);
 								
 								HashMap<Long, ArrayList<Date>> mentions = engine.getMentionHistory(userID, timeline);
-								mDBHelper.insertMentionHistory(userID, mentions);
+								mDBAdapter.insertMentionHistory(userID, mentions);
 							}
 							
 							ArrayList<Status> favorites = engine.getFavorites(userID);
-							mDBHelper.insertFavoriteHistory(userID, favorites);
+							mDBAdapter.insertFavoriteHistory(userID, favorites);
 							
 							// Mark this user completed
-							mDBHelper.setUserComplete(userID);
+							mDBAdapter.setUserComplete(userID);
 						}
 					});
 				}
@@ -113,7 +117,7 @@ public class Crawler {
 			 * If the user does not satisfy requirements given by you, getFollowingList() returns empty array list.
 			 */
 			if (curLevel < egoNetwork.level()) {
-				ArrayList<Long> followingList = mDBHelper.getFollowingList(userID);
+				ArrayList<Long> followingList = mDBAdapter.getFollowingList(userID);
 				for (long followingUserID : followingList) {
 					if (egoNetwork.getVisitedNodeList().contains(followingUserID) || queue.contains(followingUserID))
 						continue;
@@ -139,8 +143,8 @@ public class Crawler {
 		}
 		
 		// Mark this task as complete and then close database connections
-		mDBHelper.setSeed(egoNetwork.getSeedUserID());
-		mDBHelper.closeConnections();
+		mDBAdapter.setSeed(egoNetwork.getSeedUserID());
+		mDBAdapter.closeConnections();
 		
 		// Print crawling result
 		Utils.printLog("### Current memory usage: " + Utils.getCurMemoryUsage() + " MB", false);

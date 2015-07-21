@@ -3,9 +3,7 @@ package main;
 import java.util.ArrayList;
 
 import crawler.Crawler;
-import crawler.SeedFinder;
-import database.DBHelper;
-import twitter4j.User;
+import database.SQLiteAdapter;
 
 public class TwitterCrawler {
 	public static void main(String[] arg) {
@@ -29,7 +27,7 @@ public class TwitterCrawler {
 			crawler.run(egoNetwork);
 		}
 		
-		DBHelper.getSingleton().destroy();
+		SQLiteAdapter.getSingleton().destroy();
 		
 		System.out.println("Finished");
 	}
