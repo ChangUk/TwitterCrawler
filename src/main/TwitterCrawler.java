@@ -1,9 +1,12 @@
 package main;
 
+import java.sql.Driver;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 
 import crawler.Crawler;
-import database.SQLiteAdapter;
 
 public class TwitterCrawler {
 	public static void main(String[] arg) {
@@ -22,13 +25,28 @@ public class TwitterCrawler {
 //		seedList.add(78199077L);		// Jiwon
 		
 		for (long seed : seedList) {
-			EgoNetwork egoNetwork = new EgoNetwork(seed, 1);
+			EgoNetwork egoNetwork = new EgoNetwork(seed, 0);
 			Crawler crawler = new Crawler();
 			crawler.run(egoNetwork);
 		}
 		
-		SQLiteAdapter.getSingleton().destroy();
+		destroyDrivers();
 		
 		System.out.println("Finished");
+	}
+	
+	public static void destroyDrivers() {
+		ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+		Enumeration<Driver> drivers = DriverManager.getDrivers();
+		while (drivers.hasMoreElements()) {
+			Driver driver = drivers.nextElement();
+			if (driver.getClass().getClassLoader() == classLoader) {
+				try {
+					DriverManager.deregisterDriver(driver);
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 }

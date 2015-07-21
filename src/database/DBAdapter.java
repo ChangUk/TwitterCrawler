@@ -1,7 +1,6 @@
 package database;
 
 import java.sql.Connection;
-import java.sql.Driver;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -9,21 +8,19 @@ import java.util.ArrayList;
 
 public abstract class DBAdapter {
 	// Connection information
-	protected String DRIVER_NAME;						// JDBC driver name
-	protected String URL;								// JDBC URL to connect
+	protected String CONNECTION_URL;					// JDBC URL to connect
 	protected String DATABASE_NAME;						// Database name
 	protected String USER_ID;							// Access user ID
 	protected String USER_PASSWORD;						// Access user password
 	
 	// Connection variables
-	protected Driver driver = null;						// Database driver
 	protected Connection conn = null;					// Connection for DB write
 	protected ConnectionPool connectionPool = null;		// Connection pool for DB read
 	
 	// Abstract methods
+	public abstract boolean createDatabase();
 	public abstract boolean makeConnections();
 	public abstract boolean closeConnections();
-	public abstract boolean destroy();
 	
 	protected synchronized boolean execQuery(String sql) {
 		try {

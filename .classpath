@@ -2,10 +2,15 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
-	<classpathentry kind="lib" path="lib/sqlite-jdbc-3.8.10.1.jar"/>
 	<classpathentry kind="lib" path="lib/twitter4j-core-4.0.4.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:platform:/resource/TwitterCrawler/lib/twitter4j-core-4.0.4-javadoc.jar!/"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="lib/sqlite-jdbc-3.8.10.1.jar"/>
+	<classpathentry kind="lib" path="lib/mariadb-java-client-1.2.0.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:platform:/resource/TwitterCrawler/lib/mariadb-java-client-1.2.0-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="output" path="bin"/>

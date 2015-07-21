@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
-import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -35,8 +34,7 @@ public class SQLiteAdapter extends DBAdapter {
 	public SQLiteAdapter() {
 		// Connection information
 		DATABASE_PATH	= "../Data/TwitterData/TwitterData.sqlite";
-		DRIVER_NAME		= "org.sqlite.JDBC";
-		URL				= "jdbc:sqlite:" + DATABASE_PATH;
+		CONNECTION_URL	= "jdbc:sqlite:" + DATABASE_PATH;
 		DATABASE_BACKUP	= DATABASE_PATH + ".backup";
 		USER_ID			= null;
 		USER_PASSWORD	= null;
@@ -44,38 +42,28 @@ public class SQLiteAdapter extends DBAdapter {
 		// Backup existing database file
 		makeBackupFile();
 		
-		try {
-			// Register the Driver to the jbdc.driver java property
-			driver = (Driver) Class.forName(DRIVER_NAME).newInstance();
-			DriverManager.registerDriver(driver);
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			e.printStackTrace();
-		} catch (InstantiationException e) {
-			e.printStackTrace();
-		}
-		
 		// Create DB connection and DB tables
-		makeConnections();
+		createDatabase();
 		createDBTables();
+	}
+	
+	@Override
+	public synchronized boolean createDatabase() {
+		// If there is no such directory, create the path.
+		File database = new File(DATABASE_PATH);
+		if (database.getParentFile().exists() == false)
+			database.getParentFile().mkdirs();
+		return makeConnections();
 	}
 	
 	@Override
 	public synchronized boolean makeConnections() {
 		try {
-			// If there is no such directory, create the path
-			File database = new File(DATABASE_PATH);
-			if (database.getParentFile().exists() == false)
-				database.getParentFile().mkdirs();
-			
-			// If database does not exist, then it will be created automatically
+			// If database does not exist, then it will be created automatically.
 			if (conn == null || conn.isClosed()) {
 				SQLiteConfig config = new SQLiteConfig();
 				config.setJournalMode(JournalMode.WAL);
-				conn = DriverManager.getConnection(URL, config.toProperties());
+				conn = DriverManager.getConnection(CONNECTION_URL, config.toProperties());
 				conn.setAutoCommit(false);
 			}
 			
@@ -83,7 +71,7 @@ public class SQLiteAdapter extends DBAdapter {
 			if (connectionPool == null) {
 				SQLiteConfig poolConfig = new SQLiteConfig();
 				poolConfig.setReadOnly(true);
-				connectionPool = new ConnectionPool(URL, poolConfig.toProperties());
+				connectionPool = new ConnectionPool(CONNECTION_URL, poolConfig.toProperties());
 				connectionPool.setMaxPoolSize(1000);
 			}
 			return true;
@@ -104,19 +92,6 @@ public class SQLiteAdapter extends DBAdapter {
 				connectionPool.closeAll();
 				connectionPool = null;
 			}
-			return true;
-		} catch (SQLException e) {
-			e.printStackTrace();
-			return false;
-		}
-	}
-	
-	@Override
-	public synchronized boolean destroy() {
-		try {
-			// Removes the specified driver from the DriverManager's list of registered drivers
-			if (driver != null)
-				DriverManager.deregisterDriver(driver);
 			return true;
 		} catch (SQLException e) {
 			e.printStackTrace();
