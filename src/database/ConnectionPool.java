@@ -68,17 +68,10 @@ public class ConnectionPool {
 		
 		// If there is no available connection,
 		if (freeConnections.isEmpty()) {
-			try {
-				// If it is allowed to make more connections,
-				if (maxConn == 0 || inUseConnectionCount < maxConn) {
-					// Create new connection
-					conn = getNewConnection();
-					conn.setAutoCommit(false);
-				}
-			} catch (SQLException e) {
-				e.printStackTrace();
-				return null;
-			}
+			// If it is allowed to make more connections,
+			if (maxConn == 0 || inUseConnectionCount < maxConn)
+				// Create new connection
+				conn = getNewConnection();
 		} else {
 			// If there is available connection, take it.
 			conn = freeConnections.poll();

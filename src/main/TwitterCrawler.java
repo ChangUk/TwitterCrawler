@@ -25,7 +25,7 @@ public class TwitterCrawler {
 //		seedList.add(78199077L);		// Jiwon
 		
 		for (long seed : seedList) {
-			EgoNetwork egoNetwork = new EgoNetwork(seed, 0);
+			EgoNetwork egoNetwork = new EgoNetwork(seed, 2);
 			Crawler crawler = new Crawler();
 			crawler.run(egoNetwork);
 		}
