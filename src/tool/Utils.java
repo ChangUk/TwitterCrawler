@@ -207,7 +207,7 @@ public class Utils {
 		if (flush == true) {
 			PrintWriter writer = null;
 			try {
-				writer = new PrintWriter("../Data/TwitterData/crawling_info.log", "utf-8");
+				writer = new PrintWriter("crawling_info.log", "utf-8");
 				writer.print(msgLog);
 				writer.close();
 			} catch (UnsupportedEncodingException uee) {
