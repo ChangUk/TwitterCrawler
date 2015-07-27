@@ -1,8 +1,8 @@
 package crawler;
 
 import java.util.Map;
-import java.util.logging.Logger;
 
+import tool.SimpleLogger;
 import twitter4j.RateLimitStatus;
 import twitter4j.Twitter;
 import twitter4j.TwitterException;
@@ -15,6 +15,9 @@ public class TwitterApp {
 	
 	// twitter4j instance
 	public Twitter twitter = null;
+	
+	// Log printer
+	public SimpleLogger logger = SimpleLogger.getSingleton();
 	
 	public TwitterApp(String name, String API_KEY, String API_SECRET, String ACCESS_KEY, String ACCESS_SECRET) {
 		this.name = name;
@@ -58,7 +61,6 @@ public class TwitterApp {
 	 * @param curEndpoint
 	 */
 	public void printRateLimitStatus(String curEndpoint) {
-		Logger logger = Logger.getGlobal();
 		AppManager appManager = AppManager.getSingleton();
 		logger.info("----------------------- Limited Endpoint Status -----------------------\n"
 				+ "- App(" + name + " - '" + curEndpoint + "') reaches rate limited.");
@@ -73,7 +75,6 @@ public class TwitterApp {
 	 */
 	@Deprecated
 	public void printRateLimitStatusFromTwitter() {
-		Logger logger = Logger.getGlobal();
 		try {
 			Map<String, RateLimitStatus> rateLimitStatus = twitter.getRateLimitStatus();
 			for (String endpoint : rateLimitStatus.keySet()) {

@@ -1,8 +1,5 @@
 package tool;
 
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
@@ -39,7 +36,8 @@ public class Utils {
 	public static void sleep(long milliseconds) {
 		try {
 			Thread.sleep(milliseconds);
-		} catch (InterruptedException ie) {
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
 	}
 	
@@ -48,7 +46,7 @@ public class Utils {
 	 * @param tweet Target tweet to be tested
 	 * @return True if the tweet contains mentioning in its text, false otherwise.
 	 */
-	public static boolean isMentionTweet(Status tweet) {
+	public static boolean containsMention(Status tweet) {
 		if (tweet.getMediaEntities().length > 0)
 			return true;
 		
@@ -59,105 +57,6 @@ public class Utils {
 				return true;
 		}
 		return false;
-	}
-	
-	// Regular expressions (Latin)
-	public static final String REGEX_LATIN_BASIC = "\\p{InBasic_Latin}";				//	"A-Za-z";
-	public static final String REGEX_LATIN_SUPPLEMENT = "\\p{InLatin-1_Supplement}";	//	"�-횜횢-철첫-첼";
-	public static final String REGEX_LATIN_EXTENDED_A = "\\p{InLatin_Extended-A}";		//	"�-탓";
-	public static final String REGEX_LATIN_EXTENDED_B = "\\p{InLatin_Extended-B}";		//	"�-��";
-	public static final String REGEX_LATIN = "\\p{Latin}";								//	REGEX_LATIN_BASIC + REGEX_LATIN_SUPPLEMENT + REGEX_LATIN_EXTENDED_A + REGEX_LATIN_EXTENDED_B;
-	
-	// Regular expressions (Korean)
-	public static final String REGEX_HANGUL_JAMO = "\\p{InHangul_Jamo}";				//	"�꽦-�뀕�뀖-�뀭";
-	public static final String REGEX_HANGUL_SYLLABLES = "\\p{InHangul_Syllables}";		//	"媛�-�옡";
-	public static final String REGEX_HANGUL = "\\p{Hangul}";							//	REGEX_HANGUL_JAMO + REGEX_HANGUL_SYLLABLES;
-	
-	// Regular expressions (Text)
-	public static final String REGEX_SCRIPTS = REGEX_LATIN + REGEX_HANGUL;
-	
-	// Regular expressions (Symbol)
-	public static final String REGEX_SYMBOLS = "\\P{L}";								//	"!-/,:-?";
-	
-	// Regular expressions (Number)
-	public static final String REGEX_NUMBERS = "\\p{N}";								// "0-9";
-	
-	/**
-	 * Check if the given word is Hangul word or not.
-	 * @param word
-	 * @return True if the given word is Hangul.
-	 */
-	public static boolean isHangul(String word) {
-		if (word.length() == 0)
-			return false;
-		return word.matches("^[" + REGEX_HANGUL + "]+$");
-	}
-	
-	/**
-	 * Check if the given word is Hangul syllables or not.
-	 * @param word
-	 * @return True if the given word is Hangul.
-	 */
-	public static boolean isHangulSyllables(String word) {
-		if (word.length() == 0)
-			return false;
-		return word.matches("^[" + REGEX_HANGUL_SYLLABLES + "]+$");
-	}
-	
-	/**
-	 * Check if the given word contains both Hangul and English.
-	 * @param word
-	 * @return True if the given word contains English.
-	 */
-	public static boolean isHangulWithEnglish(String word) {
-		if (word.length() == 0)
-			return false;
-		return word.matches("^[" + REGEX_HANGUL_SYLLABLES + "]*[" + REGEX_LATIN_BASIC + "]+[" + REGEX_HANGUL_SYLLABLES + "]*$");
-	}
-	
-	public static boolean isTextWithNumbers(String word) {
-		if (word.length() == 0)
-			return false;
-		return word.matches("^[" + REGEX_HANGUL_SYLLABLES + REGEX_LATIN_BASIC + "]+[" + REGEX_NUMBERS + "]+[" + REGEX_HANGUL_SYLLABLES + REGEX_LATIN_BASIC + "]+$");
-	}
-	
-	public static boolean isTextWithSymbols(String word) {
-		if (word.length() == 0)
-			return false;
-		return word.matches("^[" + REGEX_HANGUL_SYLLABLES + REGEX_LATIN_BASIC + "]+[" + REGEX_SYMBOLS + "]+[" + REGEX_HANGUL_SYLLABLES + REGEX_LATIN_BASIC + "]+$");
-	}
-	
-	/**
-	 * Check if the given word is English word or not.
-	 * @param word
-	 * @return True if the given word is English.
-	 */
-	public static boolean isEnglish(String word) {
-		if (word.length() == 0)
-			return false;
-		return word.matches("^[" + REGEX_LATIN_BASIC + "]+$");
-	}
-	
-	/**
-	 * Check if the given word is Latin word or not.
-	 * @param word
-	 * @return True if the given word is Latin.
-	 */
-	public static boolean isLatin(String word) {
-		if (word.length() == 0)
-			return false;
-		return word.matches("['" + REGEX_LATIN + "]+");
-	}
-	
-	/**
-	 * Check if the given word has no symbol or any other marks(i.e., question mark).
-	 * @param word
-	 * @return True if the given word has no symbol.
-	 */
-	public static boolean isWord(String word) {
-		if (word.length() == 0)
-			return false;
-		return word.matches("['" + REGEX_SCRIPTS + "]+");
 	}
 	
 	/**
@@ -192,31 +91,5 @@ public class Utils {
 		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 		Calendar now = Calendar.getInstance();
 		return dateFormat.format(now.getTime());
-	}
-	
-	/**
-	 * Print a given log message out. You are able to flush the log message to *.log file as well.
-	 * @param log log message
-	 * @param flush If true, the concatenated log texts are saved into a log file.
-	 */
-	private static String msgLog = new String();
-	public static void printLog(String log, boolean flush) {
-		System.out.println(log);
-		msgLog = msgLog.concat(log + "\r\n");
-		
-		if (flush == true) {
-			PrintWriter writer = null;
-			try {
-				writer = new PrintWriter("crawling_info.log", "utf-8");
-				writer.print(msgLog);
-				writer.close();
-			} catch (UnsupportedEncodingException uee) {
-				uee.printStackTrace();
-			} catch (FileNotFoundException fnfe) {
-				fnfe.printStackTrace();
-			} finally {
-				msgLog = new String("");
-			}
-		}
 	}
 }

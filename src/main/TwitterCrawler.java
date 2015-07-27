@@ -1,12 +1,9 @@
 package main;
 
-import java.sql.Driver;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Enumeration;
 
 import crawler.Crawler;
+import tool.SimpleLogger;
 
 public class TwitterCrawler {
 	public static void main(String[] arg) {
@@ -30,23 +27,7 @@ public class TwitterCrawler {
 			crawler.run(egoNetwork);
 		}
 		
-		destroyDrivers();
-		
+		SimpleLogger.flush();
 		System.out.println("Finished");
-	}
-	
-	public static void destroyDrivers() {
-		ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-		Enumeration<Driver> drivers = DriverManager.getDrivers();
-		while (drivers.hasMoreElements()) {
-			Driver driver = drivers.nextElement();
-			if (driver.getClass().getClassLoader() == classLoader) {
-				try {
-					DriverManager.deregisterDriver(driver);
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}
-			}
-		}
 	}
 }

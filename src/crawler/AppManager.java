@@ -7,20 +7,25 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.logging.Logger;
 
 import tool.CircularQueue;
+import tool.SimpleLogger;
 
 public class AppManager {
 	private static AppManager mInstance = null;
+	
+	public static synchronized AppManager getSingleton() {
+		return (mInstance != null) ? (mInstance) : (mInstance = new AppManager());
+	}
+	
+	// Twitter application file path
 	public final String PATH_APPS = "../TwitterApp.dat";
 	
 	private CircularQueue<TwitterApp> mAppQueue = null;
 	public HashMap<String, ArrayList<TwitterApp>> limitedEndpoints;
 	
-	public static synchronized AppManager getSingleton() {
-		return (mInstance != null) ? (mInstance) : (mInstance = new AppManager());
-	}
+	// Log printer
+	public SimpleLogger logger = SimpleLogger.getSingleton();
 	
 	/**
 	 * TwitterApps data format:
@@ -93,7 +98,6 @@ public class AppManager {
 				}
 			}
 		}.start();
-		
 		app.printRateLimitStatus(endpoint);
 	}
 	
@@ -105,8 +109,6 @@ public class AppManager {
 	 * @return available TwitterApp
 	 */
 	public synchronized TwitterApp getAvailableApp(String endpoint) {
-		Logger logger = Logger.getGlobal();
-		
 		int cursor = mAppQueue.getCursor();
 		while (true) {
 			TwitterApp app = mAppQueue.getCurrentItem();

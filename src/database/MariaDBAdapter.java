@@ -200,7 +200,7 @@ public class MariaDBAdapter extends DBAdapter {
 			value[0] = String.valueOf(target.getId());
 			value[1] = String.valueOf(target.getUser().getId());
 			value[2] = target.getText();
-			value[3] = String.valueOf(Utils.isMentionTweet(target) == true ? 1 : 0);
+			value[3] = String.valueOf(Utils.containsMention(target) == true ? 1 : 0);
 			value[4] = String.valueOf(target.getCreatedAt().getTime());
 			values.add(value);
 		}

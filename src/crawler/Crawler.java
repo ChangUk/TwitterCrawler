@@ -11,12 +11,14 @@ import java.util.concurrent.Executors;
 import database.SQLiteAdapter;
 import main.EgoNetwork;
 import main.Settings;
+import tool.SimpleLogger;
 import tool.Utils;
 import twitter4j.Status;
 import twitter4j.User;
 
 public class Crawler {
 	private Engine engine;
+	private SimpleLogger logger;
 	
 	// Necessary for Breadth-First-Search
 	private Queue<Long> queue;
@@ -29,6 +31,7 @@ public class Crawler {
 	
 	public Crawler() {
 		this.engine = Engine.getSingleton();
+		this.logger = SimpleLogger.getSingleton();
 		this.queue = new LinkedList<Long>();
 		this.exeService = Executors.newFixedThreadPool(1000);
 		this.mDBAdapter = SQLiteAdapter.getSingleton();
@@ -44,7 +47,7 @@ public class Crawler {
 		if (mDBAdapter.isSeed(egoNetwork.getSeedUserID()))
 			return;
 		
-		Utils.printLog("TWITTER CRAWLING STARTED: " + egoNetwork.getSeedUserID() + " - " + Utils.getCurrentTime(), false);
+		logger.print("TWITTER CRAWLING STARTED: " + egoNetwork.getSeedUserID() + " - " + Utils.getCurrentTime());
 		long crawling_start = System.currentTimeMillis();
 		
 		// Lookup seed user and put it into BFS queue
@@ -135,7 +138,7 @@ public class Crawler {
 		}
 		
 		// Graph searching is finished
-		Utils.printLog(Utils.getExecutingTime("Graph searching time", crawling_start), false);
+		logger.print(Utils.getExecutingTime("Graph searching time", crawling_start));
 		
 		exeService.shutdown();
 		while (exeService.isTerminated() == false) {
@@ -147,12 +150,12 @@ public class Crawler {
 		mDBAdapter.closeConnections();
 		
 		// Print crawling result
-		Utils.printLog("### Current memory usage: " + Utils.getCurMemoryUsage() + " MB", false);
+		logger.print("### Current memory usage: " + Utils.getCurMemoryUsage() + " MB");
 		
 		// Garbage collection
 		System.gc();
 		
-		Utils.printLog("TWITTER CRAWLING FINISHED", false);
-		Utils.printLog(Utils.getExecutingTime("Total executing time", crawling_start), true);
+		logger.print("TWITTER CRAWLING FINISHED");
+		logger.print(Utils.getExecutingTime("Total executing time", crawling_start));
 	}
 }
