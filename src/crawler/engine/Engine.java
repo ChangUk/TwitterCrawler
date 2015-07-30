@@ -1,4 +1,4 @@
-package crawler;
+package crawler.engine;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -46,11 +46,10 @@ public class Engine {
 			TwitterApp app = mAppManager.getAvailableApp(endpoint);
 			try {
 				IDs followingsIDs = app.twitter.getFriendsIDs(userID, cursor);
-				for (long followingID : followingsIDs.getIDs()) {
+				for (long followingID : followingsIDs.getIDs())
 					followingUsers.add(followingID);
-					if (followingUsers.size() == maxCount)
-						break;
-				}
+				if (followingUsers.size() >= maxCount)
+					break;
 				cursor = followingsIDs.getNextCursor();
 			} catch (TwitterException te) {
 				boolean retry = true;
@@ -93,11 +92,10 @@ public class Engine {
 			TwitterApp app = mAppManager.getAvailableApp(endpoint);
 			try {
 				IDs followersIDs = app.twitter.getFollowersIDs(userID, cursor);
-				for (long followerID : followersIDs.getIDs()) {
+				for (long followerID : followersIDs.getIDs())
 					followers.add(followerID);
-					if (followers.size() == maxCount)
-						break;
-				}
+				if (followers.size() >= maxCount)
+					break;
 				cursor = followersIDs.getNextCursor();
 			} catch (TwitterException te) {
 				boolean retry = true;
@@ -126,7 +124,7 @@ public class Engine {
 	}
 	
 	/**
-	 * Look up user list.
+	 * Look up multiple users.
 	 * If a requested user is unknown, suspended, or deleted, then that user will not be returned in the results list.
 	 * If none of your lookup criteria can be satisfied by returning a user object, a HTTP 404 will be thrown.
 	 * @param userList Users to be looked up

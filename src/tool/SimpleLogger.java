@@ -35,9 +35,10 @@ public class SimpleLogger {
 	private static StringBuilder loggingHistory = new StringBuilder();
 	private final String LINE_SEPARATOR = System.getProperty("line.separator");
 	
-	public void print(String msg) {
-		System.out.println(msg);
-		loggingHistory.append(msg + LINE_SEPARATOR);
+	public void print(Object msg) {
+		String message = msg.toString();
+		System.out.println(message);
+		loggingHistory.append(message + LINE_SEPARATOR);
 	}
 	
 	/**

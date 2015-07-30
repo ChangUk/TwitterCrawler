@@ -8,15 +8,16 @@ import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import crawler.engine.Engine;
 import database.SQLiteAdapter;
 import main.EgoNetwork;
-import main.Settings;
 import tool.SimpleLogger;
 import tool.Utils;
 import twitter4j.Status;
 import twitter4j.User;
 
-public class Crawler {
+public class EgoNetCrawler {
+	private EgoNetwork egoNetwork;
 	private Engine engine;
 	private SimpleLogger logger;
 	
@@ -29,15 +30,17 @@ public class Crawler {
 	// Database transaction manager
 	private SQLiteAdapter mDBAdapter;
 	
-	public Crawler() {
+	public EgoNetCrawler(EgoNetwork egoNetwork) {
+		this.egoNetwork = egoNetwork;
 		this.engine = Engine.getSingleton();
 		this.logger = SimpleLogger.getSingleton();
+		
 		this.queue = new LinkedList<Long>();
 		this.exeService = Executors.newFixedThreadPool(1000);
 		this.mDBAdapter = SQLiteAdapter.getSingleton();
 	}
 	
-	public void run(EgoNetwork egoNetwork) {
+	public void run() {
 		if (egoNetwork.level() < 0) return;
 		
 		// Make DB connection
@@ -74,7 +77,7 @@ public class Crawler {
 				// Register valid user to database
 				mDBAdapter.insertUser(user);
 				
-				if (Settings.isNormalUser(user)) {
+				if (isNormalUser(user)) {
 					// Get following user list
 					ArrayList<Long> followings = engine.getFollowings(userID, 5000);
 					mDBAdapter.insertFollowingList(userID, followings);
@@ -157,5 +160,23 @@ public class Crawler {
 		
 		logger.print("TWITTER CRAWLING FINISHED");
 		logger.print(Utils.getExecutingTime("Total executing time", crawling_start));
+	}
+	
+	private boolean isNormalUser(User user) {
+		if (user == null)
+			return false;
+		if (user.isProtected())
+			return false;
+		if (user.isVerified())						// If the user is a verified celebrity, the user is not normal user.
+			return false;
+		if (user.getLang().equals("ko") == false)
+			return false;
+		if (user.getFriendsCount() > 5000)
+			return false;
+		if (user.getFollowersCount() > 5000)
+			return false;
+		if (user.getStatusesCount() < 1)
+			return false;
+		return true;
 	}
 }

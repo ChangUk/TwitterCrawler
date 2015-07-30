@@ -114,7 +114,7 @@ public class SQLiteAdapter extends DBAdapter {
 	public boolean createDBTables() {
 		ArrayList<String> sqls = new ArrayList<String>();
 		sqls.add("CREATE TABLE IF NOT EXISTS user ("
-				+ "id INTEGER PRIMARY KEY, isSeed INTEGER, isComplete INTEGER, isProtected INTEGER, isVerified INTEGER, lang TEXT, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, favoritesCount INTEGER, date INTEGER)");
+				+ "id INTEGER PRIMARY KEY, screenName TEXT, description TEXT, isSeed INTEGER, isComplete INTEGER, isProtected INTEGER, isVerified INTEGER, lang TEXT, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, favoritesCount INTEGER, date INTEGER)");
 		sqls.add("CREATE TABLE IF NOT EXISTS follow ("
 				+ "source INTEGER, target INTEGER, PRIMARY KEY(source, target))");
 		sqls.add("CREATE TABLE IF NOT EXISTS tweet ("
@@ -131,32 +131,32 @@ public class SQLiteAdapter extends DBAdapter {
 	}
 	
 	public boolean insertUser(User user) {
-		if (user == null) return false;
-		String sql = new String("INSERT OR REPLACE INTO user ("
-				+ "id, isSeed, isComplete, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES ("
-				+ user.getId() + ", 0, 0, " + (user.isProtected() ? 1 : 0) + ", " + (user.isVerified() ? 1 : 0) + ", '"
-				+ user.getLang() + "', " + user.getFriendsCount() + ", " + user.getFollowersCount() + ", " + user.getStatusesCount() + ", " + user.getFavouritesCount() + ", " + user.getCreatedAt().getTime() + ")");
-		return execQuery(sql);
+		ArrayList<User> userList = new ArrayList<User>();
+		userList.add(user);
+		return insertUsers(userList);
 	}
 	
 	public boolean insertUsers(ArrayList<User> users) {
-		if (users == null) return false;
+		if (users == null || users.size() == 0)
+			return false;
 		String sql = new String("INSERT OR REPLACE INTO user ("
-				+ "id, isSeed, isComplete, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				+ "id, screenName, description, isSeed, isComplete, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		ArrayList<String[]> values = new ArrayList<String[]>();
 		for (User user : users) {
-			String[] value = new String[11];
+			String[] value = new String[13];
 			value[0] = String.valueOf(user.getId());
-			value[1] = new String("0");
-			value[2] = new String("0");
-			value[3] = String.valueOf(user.isProtected() ? 1 : 0);
-			value[4] = String.valueOf(user.isVerified() ? 1 : 0);
-			value[5] = user.getLang();
-			value[6] = String.valueOf(user.getFriendsCount());
-			value[7] = String.valueOf(user.getFollowersCount());
-			value[8] = String.valueOf(user.getStatusesCount());
-			value[9] = String.valueOf(user.getFavouritesCount());
-			value[10] = String.valueOf(user.getCreatedAt().getTime());
+			value[1] = user.getScreenName();
+			value[2] = user.getDescription();
+			value[3] = new String("0");
+			value[4] = new String("0");
+			value[5] = String.valueOf(user.isProtected() ? 1 : 0);
+			value[6] = String.valueOf(user.isVerified() ? 1 : 0);
+			value[7] = user.getLang();
+			value[8] = String.valueOf(user.getFriendsCount());
+			value[9] = String.valueOf(user.getFollowersCount());
+			value[10] = String.valueOf(user.getStatusesCount());
+			value[11] = String.valueOf(user.getFavouritesCount());
+			value[12] = String.valueOf(user.getCreatedAt().getTime());
 			values.add(value);
 		}
 		return execBatchQueries(sql, values);
