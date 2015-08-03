@@ -89,7 +89,7 @@ public class EgoNetCrawler {
 							ArrayList<Status> timeline = engine.getTimeline(userID);
 							if (timeline.size() > 0) {
 								mDBAdapter.insertTweets(timeline);
-
+								
 								ArrayList<Status> retweets = engine.getRetweets(timeline);
 								mDBAdapter.insertRetweetHistory(userID, retweets);
 								
@@ -169,7 +169,7 @@ public class EgoNetCrawler {
 			return false;
 		if (user.isVerified())						// If the user is a verified celebrity, the user is not normal user.
 			return false;
-		if (user.getLang().equals("ko") == false)
+		if (user.getLang().equals("en") == false)
 			return false;
 		if (user.getFriendsCount() > 5000)
 			return false;

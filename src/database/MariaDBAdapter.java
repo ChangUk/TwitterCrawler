@@ -118,6 +118,8 @@ public class MariaDBAdapter extends DBAdapter {
 				+ "id, screenName, description, isSeed, isComplete, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		ArrayList<String[]> values = new ArrayList<String[]>();
 		for (User user : users) {
+			if (user == null)
+				continue;
 			String[] value = new String[13];
 			value[0] = String.valueOf(user.getId());
 			value[1] = user.getScreenName();

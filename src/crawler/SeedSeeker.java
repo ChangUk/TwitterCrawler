@@ -21,7 +21,7 @@ public class SeedSeeker {
 		mDBAdapter.makeConnections();
 		
 		User seedUser = engine.showUserByScreenName("CNN");
-		ArrayList<Long> followers = engine.getFollowers(seedUser.getId(), 1000);
+		ArrayList<Long> followers = engine.getFollowers(seedUser.getId(), 100000);
 		ArrayList<User> candidates = engine.lookupUsersByID(followers);
 		for (User user : candidates) {
 			if (isGoodSeed(user))
