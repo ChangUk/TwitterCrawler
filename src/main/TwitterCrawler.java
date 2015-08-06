@@ -11,22 +11,22 @@ public class TwitterCrawler {
 		/**
 		 * Finding good seed users
 		 */
-		SeedSeeker seedSeeker = new SeedSeeker();
-		seedSeeker.findGoodSeeds();
+//		SeedSeeker seedSeeker = new SeedSeeker();
+//		seedSeeker.findGoodSeeds();
 		
 		/**
 		 * Crawling an ego network
 		 */
-//		ArrayList<Long> seedList = new ArrayList<Long>();
-//		seedList.add(1188870223L);		// ChangUk
+		ArrayList<Long> seedList = new ArrayList<Long>();
+		seedList.add(1188870223L);		// ChangUk
 //		seedList.add(3182892457L);		// JeeIn
 //		seedList.add(78199077L);		// Jiwon
-//		
-//		for (long seed : seedList) {
-//			EgoNetwork egoNetwork = new EgoNetwork(seed, 1);
-//			EgoNetCrawler crawler = new EgoNetCrawler(egoNetwork);
-//			crawler.run();
-//		}
+		
+		for (long seed : seedList) {
+			EgoNetwork egoNetwork = new EgoNetwork(seed, 1);
+			EgoNetCrawler crawler = new EgoNetCrawler(egoNetwork);
+			crawler.run();
+		}
 		
 		SimpleLogger.flush();
 		System.out.println("Finished");

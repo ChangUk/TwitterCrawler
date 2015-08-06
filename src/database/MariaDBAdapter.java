@@ -88,6 +88,8 @@ public class MariaDBAdapter extends DBAdapter {
 	
 	public boolean createDBTables() {
 		ArrayList<String> sqls = new ArrayList<String>();
+		
+		// Create tables
 		sqls.add("CREATE TABLE IF NOT EXISTS user ("
 				+ "id BIGINT PRIMARY KEY, screenName VARCHAR(15), description VARCHAR(160), isSeed BOOLEAN, isComplete BOOLEAN, isProtected BOOLEAN, isVerified BOOLEAN, lang VARCHAR(20), followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, favoritesCount INTEGER, date BIGINT)");
 		sqls.add("CREATE TABLE IF NOT EXISTS follow ("
@@ -102,6 +104,10 @@ public class MariaDBAdapter extends DBAdapter {
 				+ "user BIGINT, tweet BIGINT, PRIMARY KEY(user, tweet))");
 		sqls.add("CREATE TABLE IF NOT EXISTS mention ("
 				+ "source BIGINT, target BIGINT, date BIGINT, PRIMARY KEY(source, target, date))");
+		
+		// Create index on a column of table
+		sqls.add("CREATE INDEX index_tweet_author ON tweet(author)");
+		
 		return execQuery(sqls);
 	}
 	

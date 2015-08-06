@@ -113,6 +113,8 @@ public class SQLiteAdapter extends DBAdapter {
 	
 	public boolean createDBTables() {
 		ArrayList<String> sqls = new ArrayList<String>();
+		
+		// Create tables
 		sqls.add("CREATE TABLE IF NOT EXISTS user ("
 				+ "id INTEGER PRIMARY KEY, screenName TEXT, description TEXT, isSeed INTEGER, isComplete INTEGER, isProtected INTEGER, isVerified INTEGER, lang TEXT, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, favoritesCount INTEGER, date INTEGER)");
 		sqls.add("CREATE TABLE IF NOT EXISTS follow ("
@@ -127,6 +129,10 @@ public class SQLiteAdapter extends DBAdapter {
 				+ "user INTEGER, tweet INTEGER, PRIMARY KEY(user, tweet))");
 		sqls.add("CREATE TABLE IF NOT EXISTS mention ("
 				+ "source INTEGER, target INTEGER, date INTEGER, PRIMARY KEY(source, target, date))");
+		
+		// Create index on a column of table
+		sqls.add("CREATE INDEX index_tweet_author ON tweet(author)");
+		
 		return execQuery(sqls);
 	}
 	
