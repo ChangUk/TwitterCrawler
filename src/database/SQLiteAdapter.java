@@ -131,8 +131,7 @@ public class SQLiteAdapter extends DBAdapter {
 				+ "source INTEGER, target INTEGER, date INTEGER, PRIMARY KEY(source, target, date))");
 		
 		// Create index on a column of table
-		sqls.add("CREATE INDEX index_tweet_author ON tweet(author)");
-		sqls.add("CREATE INDEX index_tweet_isMention ON tweet(isMention)");
+		sqls.add("CREATE INDEX index_tweet_author_and_isMention ON tweet(author, isMention)");
 		
 		return execQuery(sqls);
 	}
