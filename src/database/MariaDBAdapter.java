@@ -91,7 +91,7 @@ public class MariaDBAdapter extends DBAdapter {
 		
 		// Create tables
 		sqls.add("CREATE TABLE IF NOT EXISTS user ("
-				+ "id BIGINT PRIMARY KEY, screenName VARCHAR(15), description VARCHAR(160), isSeed BOOLEAN, isComplete BOOLEAN, isProtected BOOLEAN, isVerified BOOLEAN, lang VARCHAR(20), followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, favoritesCount INTEGER, date BIGINT)");
+				+ "id BIGINT PRIMARY KEY, screenName VARCHAR(15), description VARCHAR(160), location VARCHAR(30), timezone VARCHAR(30), lang VARCHAR(20), isSeed BOOLEAN, isComplete BOOLEAN, isProtected BOOLEAN, isVerified BOOLEAN, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, favoritesCount INTEGER, date BIGINT)");
 		sqls.add("CREATE TABLE IF NOT EXISTS follow ("
 				+ "source BIGINT, target BIGINT, PRIMARY KEY(source, target))");
 		sqls.add("CREATE TABLE IF NOT EXISTS tweet ("
@@ -106,7 +106,7 @@ public class MariaDBAdapter extends DBAdapter {
 				+ "source BIGINT, target BIGINT, date BIGINT, PRIMARY KEY(source, target, date))");
 		
 		// Create index on a column of table
-		sqls.add("CREATE INDEX index_tweet_author_and_isMention ON tweet(author, isMention)");
+		sqls.add("CREATE INDEX IF NOT EXISTS index_tweet_author_and_isMention ON tweet(author, isMention)");
 		
 		return execQuery(sqls);
 	}
@@ -121,25 +121,27 @@ public class MariaDBAdapter extends DBAdapter {
 		if (users == null || users.size() == 0)
 			return false;
 		String sql = new String("INSERT INTO user ("
-				+ "id, screenName, description, isSeed, isComplete, isProtected, isVerified, lang, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				+ "id, screenName, description, location, timezone, lang, isSeed, isComplete, isProtected, isVerified, followingsCount, followersCount, tweetsCount, favoritesCount, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		ArrayList<String[]> values = new ArrayList<String[]>();
 		for (User user : users) {
 			if (user == null)
 				continue;
-			String[] value = new String[13];
+			String[] value = new String[15];
 			value[0] = String.valueOf(user.getId());
 			value[1] = user.getScreenName();
 			value[2] = user.getDescription();
-			value[3] = new String("0");
-			value[4] = new String("0");
-			value[5] = String.valueOf(user.isProtected() ? 1 : 0);
-			value[6] = String.valueOf(user.isVerified() ? 1 : 0);
-			value[7] = user.getLang();
-			value[8] = String.valueOf(user.getFriendsCount());
-			value[9] = String.valueOf(user.getFollowersCount());
-			value[10] = String.valueOf(user.getStatusesCount());
-			value[11] = String.valueOf(user.getFavouritesCount());
-			value[12] = String.valueOf(user.getCreatedAt().getTime());
+			value[3] = user.getLocation();
+			value[4] = user.getTimeZone();
+			value[5] = user.getLang();
+			value[6] = new String("0");
+			value[7] = new String("0");
+			value[8] = String.valueOf(user.isProtected() ? 1 : 0);
+			value[9] = String.valueOf(user.isVerified() ? 1 : 0);
+			value[10] = String.valueOf(user.getFriendsCount());
+			value[11] = String.valueOf(user.getFollowersCount());
+			value[12] = String.valueOf(user.getStatusesCount());
+			value[13] = String.valueOf(user.getFavouritesCount());
+			value[14] = String.valueOf(user.getCreatedAt().getTime());
 			values.add(value);
 		}
 		return execBatchQueries(sql, values);
