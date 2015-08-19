@@ -175,7 +175,7 @@ public class EgoNetCrawler {
 			return false;
 		if (user.getFollowersCount() > 5000)
 			return false;
-		if (user.getStatusesCount() < 1)
+		if (user.getStatusesCount() < 50)
 			return false;
 		return true;
 	}
