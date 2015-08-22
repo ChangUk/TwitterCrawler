@@ -139,6 +139,7 @@ public class SQLiteAdapter extends DBAdapter {
 		sqls.add("CREATE INDEX IF NOT EXISTS index_retweet_user ON retweet(user)");
 		sqls.add("CREATE INDEX IF NOT EXISTS index_share_user ON share(user)");
 		sqls.add("CREATE INDEX IF NOT EXISTS index_favorite_user ON favorite(user)");
+		sqls.add("CREATE INDEX IF NOT EXISTS index_mention_source ON mention(source)");
 		
 		return execQuery(sqls);
 	}

@@ -169,8 +169,8 @@ public class EgoNetCrawler {
 			return false;
 		if (user.isVerified())						// If the user is a verified celebrity, the user is not normal user.
 			return false;
-//		if (user.getLang().equals("en") == false)
-//			return false;
+		if (user.getLang().equals("en") == false)
+			return false;
 		if (user.getFriendsCount() > 5000)
 			return false;
 		if (user.getFollowersCount() > 5000)
