@@ -77,27 +77,27 @@ public class AppManager {
 	 * Register TwitterApp which reaches rate limit
 	 * @param app TwitterApp
 	 * @param endpoint endpoint
-	 * @param secondsUntilReset time(second) until reset
+	 * @param secondsUntilReset time duration(second) until reset
 	 */
 	public synchronized void registerLimitedApp(TwitterApp app, String endpoint, int secondsUntilReset) {
 		ArrayList<TwitterApp> limitedAppList = limitedEndpoints.get(endpoint);
 		if (limitedAppList == null)
 			limitedAppList = new ArrayList<TwitterApp>();
-		if (limitedAppList.contains(app) == false)
+		if (limitedAppList.contains(app) == false) {
 			limitedAppList.add(app);
-		limitedEndpoints.put(endpoint, limitedAppList);
-		
-		new Thread() {
-			@Override
-			public void run() {
-				super.run();
-				try {
-					Thread.sleep((secondsUntilReset + 1) * 1000);		// 1s slack
-					limitedEndpoints.get(endpoint).remove(app);
-				} catch (InterruptedException ie) {
+			limitedEndpoints.put(endpoint, limitedAppList);
+			new Thread() {
+				@Override
+				public void run() {
+					super.run();
+					try {
+						Thread.sleep((secondsUntilReset + 1) * 1000);		// 1s slack
+						limitedEndpoints.get(endpoint).remove(app);
+					} catch (InterruptedException ie) {
+					}
 				}
-			}
-		}.start();
+			}.start();
+		}
 		app.printRateLimitStatus(endpoint);
 	}
 	
