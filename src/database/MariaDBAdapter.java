@@ -108,6 +108,7 @@ public class MariaDBAdapter extends DBAdapter {
 		// Create index on a column of table
 		sqls.add("CREATE INDEX IF NOT EXISTS index_user_isSeed ON user(isSeed)");
 		sqls.add("CREATE INDEX IF NOT EXISTS index_user_isComplete ON user(isComplete)");
+		sqls.add("CREATE INDEX IF NOT EXISTS index_tweet_author ON tweet(author)");
 		sqls.add("CREATE INDEX IF NOT EXISTS index_tweet_author_and_isMention ON tweet(author, isMention)");
 		sqls.add("CREATE INDEX IF NOT EXISTS index_follow_source ON follow(source)");
 		sqls.add("CREATE INDEX IF NOT EXISTS index_follow_target ON follow(target)");
