@@ -10,7 +10,7 @@ Crawling machine for gathering Twitter data
 ## Prerequisite to use
 Twitter Apps are necessary to use this crawling machine. You can create your own Twitter applications at [https://apps.twitter.com/](https://apps.twitter.com/). The Twitter Apps information should be stored in a file and its format is as follows:<br />
 ConsumerKey \t ConsumerSecret \t AccessToken \t AccessSecret \n<br />
-If you add Twitter Apps as many as possible, you can avoid rate limit of API call. After making Twitter Apps file, set its path in AppManager.java file.
+If you add Twitter Apps as many as possible, you can avoid rate limit of API call. After making Twitter Apps file, set its path in `AppManager.java`.
 
 ## Develop environment
 * OS: Linux, Windows
