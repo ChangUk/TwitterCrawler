@@ -90,11 +90,11 @@ public class EgoNetCrawler {
 							if (timeline.size() > 0) {
 								mDBAdapter.insertTweets(timeline);
 								
-								ArrayList<Status> retweets = engine.getRetweets(timeline);
+								HashMap<Status, Date> retweets = engine.getRetweets(timeline);
 								mDBAdapter.insertRetweetHistory(userID, retweets);
 								
-								ArrayList<Long> shareList = engine.getSharedTweets(timeline);
-								mDBAdapter.insertShareHistory(userID, shareList);
+								HashMap<Status, Date> quotes = engine.getQuotedTweets(timeline);
+								mDBAdapter.insertQuoteHistory(userID, quotes);
 								
 								HashMap<Long, ArrayList<Date>> mentions = engine.getMentionHistory(userID, timeline);
 								mDBAdapter.insertMentionHistory(userID, mentions);

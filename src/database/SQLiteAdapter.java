@@ -122,9 +122,9 @@ public class SQLiteAdapter extends DBAdapter {
 		sqls.add("CREATE TABLE IF NOT EXISTS tweet ("
 				+ "id INTEGER PRIMARY KEY, author INTEGER, text TEXT, isMention INTEGER, date INTEGER)");
 		sqls.add("CREATE TABLE IF NOT EXISTS retweet ("
-				+ "user INTEGER, tweet INTEGER, PRIMARY KEY(user, tweet))");
-		sqls.add("CREATE TABLE IF NOT EXISTS share ("
-				+ "user INTEGER, tweet INTEGER, PRIMARY KEY(user, tweet))");
+				+ "user INTEGER, tweet INTEGER, date INTEGER, PRIMARY KEY(user, tweet))");
+		sqls.add("CREATE TABLE IF NOT EXISTS quote ("
+				+ "user INTEGER, tweet INTEGER, date INTEGER, PRIMARY KEY(user, tweet))");
 		sqls.add("CREATE TABLE IF NOT EXISTS favorite ("
 				+ "user INTEGER, tweet INTEGER, PRIMARY KEY(user, tweet))");
 		sqls.add("CREATE TABLE IF NOT EXISTS mention ("
@@ -138,7 +138,7 @@ public class SQLiteAdapter extends DBAdapter {
 		sqls.add("CREATE INDEX IF NOT EXISTS index_follow_source ON follow(source)");
 		sqls.add("CREATE INDEX IF NOT EXISTS index_follow_target ON follow(target)");
 		sqls.add("CREATE INDEX IF NOT EXISTS index_retweet_user ON retweet(user)");
-		sqls.add("CREATE INDEX IF NOT EXISTS index_share_user ON share(user)");
+		sqls.add("CREATE INDEX IF NOT EXISTS index_quote_user ON quote(user)");
 		sqls.add("CREATE INDEX IF NOT EXISTS index_favorite_user ON favorite(user)");
 		sqls.add("CREATE INDEX IF NOT EXISTS index_mention_source ON mention(source)");
 		
@@ -251,25 +251,27 @@ public class SQLiteAdapter extends DBAdapter {
 		return execBatchQueries(sql, values);
 	}
 	
-	public boolean insertRetweetHistory(long userID, ArrayList<Status> retweets) {
-		String sql = new String("INSERT OR IGNORE INTO retweet (user, tweet) VALUES (?, ?)");
+	public boolean insertRetweetHistory(long userID, HashMap<Status, Date> retweets) {
+		String sql = new String("INSERT OR IGNORE INTO retweet (user, tweet, date) VALUES (?, ?, ?)");
 		ArrayList<String[]> values = new ArrayList<String[]>();
-		for (Status retweet : retweets) {
-			String[] value = new String[2];
+		for (HashMap.Entry<Status, Date> entry : retweets.entrySet()) {
+			String[] value = new String[3];
 			value[0] = String.valueOf(userID);
-			value[1] = String.valueOf(retweet.getId());
+			value[1] = String.valueOf(entry.getKey().getId());
+			value[2] = String.valueOf(entry.getValue().getTime());
 			values.add(value);
 		}
 		return execBatchQueries(sql, values);
 	}
 	
-	public boolean insertShareHistory(long userID, ArrayList<Long> sharedTweetIDs) {
-		String sql = new String("INSERT OR IGNORE INTO share (user, tweet) VALUES (?, ?)");
+	public boolean insertQuoteHistory(long userID, HashMap<Status, Date> quotes) {
+		String sql = new String("INSERT OR IGNORE INTO quote (user, tweet, date) VALUES (?, ?, ?)");
 		ArrayList<String[]> values = new ArrayList<String[]>();
-		for (long sharedTweet : sharedTweetIDs) {
-			String[] value = new String[2];
+		for (HashMap.Entry<Status, Date> entry : quotes.entrySet()) {
+			String[] value = new String[3];
 			value[0] = String.valueOf(userID);
-			value[1] = String.valueOf(sharedTweet);
+			value[1] = String.valueOf(entry.getKey().getId());
+			value[2] = String.valueOf(entry.getValue().getTime());
 			values.add(value);
 		}
 		return execBatchQueries(sql, values);

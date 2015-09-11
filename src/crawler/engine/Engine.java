@@ -13,7 +13,6 @@ import twitter4j.QueryResult;
 import twitter4j.ResponseList;
 import twitter4j.Status;
 import twitter4j.TwitterException;
-import twitter4j.URLEntity;
 import twitter4j.User;
 import twitter4j.UserMentionEntity;
 
@@ -350,66 +349,31 @@ public class Engine {
 	}
 	
 	/**
-	 * Get shared status IDs from the given timeline
+	 * Get the retweeted statuses and retweeting time from the given timeline.
 	 * @param timeline
-	 * @return Shared status IDs
+	 * @return Retweeted status and the retweeting time
 	 */
-	public ArrayList<Long> getSharedTweets(ArrayList<Status> timeline) {
-		ArrayList<Long> shareList = new ArrayList<Long>();
+	public HashMap<Status, Date> getRetweets(ArrayList<Status> timeline) {
+		HashMap<Status, Date> retweetList = new HashMap<Status, Date>();
 		for (Status tweet : timeline) {
-			if (tweet.isRetweet()) continue;
-			
-			// Extract user's share history
-			URLEntity[] urlEntities = tweet.getURLEntities();
-			for (int i = 0; i < urlEntities.length; i++) {
-				String expandedURL = urlEntities[i].getExpandedURL();
-				if (expandedURL.startsWith("https://twitter.com/") || expandedURL.startsWith("http://twitter.com/")) {
-					String tokens[] = expandedURL.split("/");
-					
-					// Check if the status is shared from another Twitter user's timeline
-					for (int j = 0; j < tokens.length - 1; j++) {
-						try {
-							if (tokens[j].equals("status") == true) {
-								String targetTweet = tokens[j + 1];
-								Long targetTweetID = null;
-								for (int c = 1; c <= targetTweet.length(); c++) {
-									try {
-										targetTweetID = Long.parseLong(targetTweet.substring(0, c));
-									} catch (Exception e) {
-										if (c == 1)
-											targetTweetID = null;
-										else
-											targetTweetID = Long.parseLong(targetTweet.substring(0, c - 1));
-										break;
-									}
-								}
-								
-								if (targetTweetID != null)
-									shareList.add(targetTweetID);
-								break;
-							}
-						} catch (Exception e) {
-							System.out.println(expandedURL);
-						}
-					}
-				}
-			}
+			if (tweet.isRetweet())
+				retweetList.put(tweet.getRetweetedStatus(), tweet.getCreatedAt());
 		}
-		return shareList;
+		return retweetList;
 	}
 	
 	/**
-	 * Get retweet IDs from the given timeline.
+	 * Get the quoted statuses and quoting date from the given timeline.
 	 * @param timeline
-	 * @return Retweet IDs
+	 * @return Quoted statuses and the quoting time
 	 */
-	public ArrayList<Status> getRetweets(ArrayList<Status> timeline) {
-		ArrayList<Status> retweetList = new ArrayList<Status>();
+	public HashMap<Status, Date> getQuotedTweets(ArrayList<Status> timeline) {
+		HashMap<Status, Date> quoteList = new HashMap<Status, Date>();
 		for (Status tweet : timeline) {
-			if (tweet.isRetweet())
-				retweetList.add(tweet.getRetweetedStatus());
+			if (tweet.getQuotedStatus() != null)
+				quoteList.put(tweet.getQuotedStatus(), tweet.getCreatedAt());
 		}
-		return retweetList;
+		return quoteList;
 	}
 	
 	/**
