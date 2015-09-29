@@ -165,7 +165,7 @@ public class Engine {
 						case HttpResponseCode.NOT_FOUND:				// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
 							System.out.println("Lookup error: " + te.getStatusCode() + ", buffer: " + buffer);
 							for (long id : buffer)
-								users.add(showUserByID(id));
+								users.add(getUserByID(id));
 							retry = false;								// Do not retry anymore
 							break;
 						case HttpResponseCode.INTERNAL_SERVER_ERROR:	// 500: Something is broken. Please post to the group so the Twitter team can investigate.
@@ -219,7 +219,7 @@ public class Engine {
 						case HttpResponseCode.NOT_FOUND:				// 404: The URI requested is invalid or the resource requested, such as a user, does not exists.
 							System.out.println("Lookup error: " + te.getStatusCode() + ", buffer: " + buffer);
 							for (String id : buffer)
-								users.add(showUserByScreenName(id));
+								users.add(getUserByScreenName(id));
 							retry = false;								// Do not retry anymore
 							break;
 						case HttpResponseCode.INTERNAL_SERVER_ERROR:	// 500: Something is broken. Please post to the group so the Twitter team can investigate.
@@ -238,11 +238,11 @@ public class Engine {
 	}
 	
 	/**
-	 * Get 'User' instance for the given user.
+	 * Get 'User' instance of the given user.
 	 * @param userID
 	 * @return User instance
 	 */
-	public User showUserByID(long userID) {
+	public User getUserByID(long userID) {
 		String endpoint = "/users/show";
 		
 		while (true) {
@@ -271,7 +271,7 @@ public class Engine {
 		}
 	}
 	
-	public User showUserByScreenName(String username) {
+	public User getUserByScreenName(String username) {
 		String endpoint = "/users/show";
 		
 		while (true) {

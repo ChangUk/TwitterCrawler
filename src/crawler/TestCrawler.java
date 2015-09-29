@@ -11,7 +11,7 @@ public class TestCrawler {
 	}
 	
 	public void run() {
-		User user = engine.showUserByID(1188870223L);
+		User user = engine.getUserByID(1188870223L);
 		String timezone = user.getTimeZone();
 		if (timezone != null)
 			System.out.println(timezone);

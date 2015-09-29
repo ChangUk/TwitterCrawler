@@ -16,7 +16,7 @@ import tool.Utils;
 import twitter4j.Status;
 import twitter4j.User;
 
-public class EgoNetCrawler {
+public class EgoNetworkCrawler {
 	private EgoNetwork egoNetwork;
 	private Engine engine;
 	private SimpleLogger logger;
@@ -30,7 +30,7 @@ public class EgoNetCrawler {
 	// Database transaction manager
 	private SQLiteAdapter mDBAdapter;
 	
-	public EgoNetCrawler(EgoNetwork egoNetwork) {
+	public EgoNetworkCrawler(EgoNetwork egoNetwork) {
 		this.egoNetwork = egoNetwork;
 		this.engine = Engine.getSingleton();
 		this.logger = SimpleLogger.getSingleton();
@@ -54,7 +54,7 @@ public class EgoNetCrawler {
 		long crawling_start = System.currentTimeMillis();
 		
 		// Lookup seed user and put it into BFS queue
-		User seedUser = engine.showUserByID(egoNetwork.getSeedUserID());
+		User seedUser = engine.getUserByID(egoNetwork.getSeedUserID());
 		if (seedUser == null) return;
 		queue.offer(seedUser.getId());
 		
@@ -72,7 +72,7 @@ public class EgoNetCrawler {
 			nNodesToVisit[curLevel] -= 1;
 			
 			if (mDBAdapter.isComplete(userID) == false) {
-				User user = engine.showUserByID(userID);
+				User user = engine.getUserByID(userID);
 				
 				// Register valid user to database
 				mDBAdapter.insertUser(user);

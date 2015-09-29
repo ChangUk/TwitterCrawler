@@ -91,11 +91,11 @@ public class MariaDBAdapter extends DBAdapter {
 		
 		// Create tables
 		sqls.add("CREATE TABLE IF NOT EXISTS user ("
-				+ "id BIGINT PRIMARY KEY, screenName VARCHAR(15), description VARCHAR(160), location VARCHAR(30), timezone VARCHAR(30), lang VARCHAR(20), isSeed BOOLEAN, isComplete BOOLEAN, isProtected BOOLEAN, isVerified BOOLEAN, followingsCount INTEGER, followersCount INTEGER, tweetsCount INTEGER, favoritesCount INTEGER, date BIGINT)");
+				+ "id BIGINT PRIMARY KEY, screenName VARCHAR(15), description VARCHAR(160), location VARCHAR(30), timezone VARCHAR(30), lang VARCHAR(20), isSeed BOOLEAN, isComplete BOOLEAN, isProtected BOOLEAN, isVerified BOOLEAN, followingsCount INT, followersCount INT, tweetsCount INT, favoritesCount INT, date BIGINT)");
 		sqls.add("CREATE TABLE IF NOT EXISTS follow ("
 				+ "source BIGINT, target BIGINT, PRIMARY KEY(source, target))");
 		sqls.add("CREATE TABLE IF NOT EXISTS tweet ("
-				+ "id BIGINT PRIMARY KEY, author BIGINT, text VARCHAR(140), isMention BOOLEAN, date BIGINT)");
+				+ "id BIGINT PRIMARY KEY, author BIGINT, text VARCHAR(140), isMention BOOLEAN, retweetCount INT, favoriteCount INT, date BIGINT)");
 		sqls.add("CREATE TABLE IF NOT EXISTS retweet ("
 				+ "user BIGINT, tweet BIGINT, date BIGINT, PRIMARY KEY(user, tweet))");
 		sqls.add("CREATE TABLE IF NOT EXISTS quote ("
@@ -207,20 +207,29 @@ public class MariaDBAdapter extends DBAdapter {
 		String sql = new String("DELETE FROM follow WHERE target = " + userID);
 		return execQuery(sql);
 	}
-	
+
 	public boolean insertTweets(ArrayList<Status> tweets) {
-		String sql = new String("INSERT IGNORE INTO tweet (id, author, text, isMention, date) VALUES (?, ?, ?, ?, ?)");
+		return insertTweets(tweets, true);
+	}
+	
+	public boolean insertTweets(ArrayList<Status> tweets, boolean inclText) {
+		String sql = new String("INSERT IGNORE INTO tweet (id, author, text, isMention, retweetCount, favoriteCount, date) VALUES (?, ?, ?, ?, ?, ?, ?)");
 		ArrayList<String[]> values = new ArrayList<String[]>();
 		for (Status tweet : tweets) {
-			String[] value = new String[5];
+			String[] value = new String[7];
 			Status target = tweet;
 			if (tweet.isRetweet())
 				target = tweet.getRetweetedStatus();
 			value[0] = String.valueOf(target.getId());
 			value[1] = String.valueOf(target.getUser().getId());
-			value[2] = target.getText();
+			if (inclText == false)
+				value[2] = new String("");
+			else
+				value[2] = target.getText();
 			value[3] = String.valueOf(Utils.containsMention(target) == true ? 1 : 0);
-			value[4] = String.valueOf(target.getCreatedAt().getTime());
+			value[4] = String.valueOf(target.getRetweetCount());
+			value[5] = String.valueOf(target.getFavoriteCount());
+			value[6] = String.valueOf(target.getCreatedAt().getTime());
 			values.add(value);
 		}
 		return execBatchQueries(sql, values);
@@ -251,9 +260,13 @@ public class MariaDBAdapter extends DBAdapter {
 		}
 		return execBatchQueries(sql, values);
 	}
-	
+
 	public boolean insertFavoriteHistory(long userID, ArrayList<Status> favorites) {
-		insertTweets(favorites);
+		return insertFavoriteHistory(userID, favorites, true);
+	}
+	
+	public boolean insertFavoriteHistory(long userID, ArrayList<Status> favorites, boolean inclText) {
+		insertTweets(favorites, inclText);
 		
 		String sql = new String("INSERT IGNORE INTO favorite (user, tweet) VALUES (?, ?)");
 		ArrayList<String[]> values = new ArrayList<String[]>();

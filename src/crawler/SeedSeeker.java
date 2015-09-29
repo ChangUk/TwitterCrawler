@@ -3,53 +3,29 @@ package crawler;
 import java.util.ArrayList;
 
 import crawler.engine.Engine;
-import database.SQLiteAdapter;
-import twitter4j.Status;
 import twitter4j.User;
 
 public class SeedSeeker {
 	private Engine engine;
-	private SQLiteAdapter mDBAdapter;
 	
 	public SeedSeeker() {
 		this.engine = Engine.getSingleton();
-		this.mDBAdapter = SQLiteAdapter.getSingleton();
 	}
 	
-	public void findGoodSeeds() {
-		// Make DB connections
-		mDBAdapter.makeConnections();
-		
-		User seedUser = engine.showUserByScreenName("CNN");
+	/**
+	 * Get seed users from the followers of CNN.
+	 * @return A list of seed users
+	 */
+	public ArrayList<Long> getSeedUsersFromCNNFollowers() {
+		ArrayList<Long> seedList = new ArrayList<Long>();
+		User seedUser = engine.getUserByScreenName("CNN");
 		ArrayList<Long> followers = engine.getFollowers(seedUser.getId(), 100000);
 		ArrayList<User> candidates = engine.lookupUsersByID(followers);
 		for (User user : candidates) {
 			if (isGoodSeed(user))
-				mDBAdapter.insertUser(user);
+				seedList.add(user.getId());
 		}
-		
-		// Close DB connections
-		mDBAdapter.closeConnections();
-	}
-	
-	/**
-	 * Get seed candidates from the following site:
-	 * <a href="http://selfintro.xguru.net/">http://selfintro.xguru.net/</a>
-	 * @return seed-candidate user list
-	 */
-	public ArrayList<User> getSeedCandidatesFromSelfIntro() {
-		ArrayList<Status> searchResult = engine.searchTweets("#self_intro", 5000);
-		ArrayList<User> candidates = new ArrayList<User>();
-		for (Status tweet : searchResult) {
-			if (candidates.contains(tweet.getUser()) == false)
-				candidates.add(tweet.getUser());
-		}
-		return candidates;
-	}
-	
-	public ArrayList<User> getCNNFollowers() {
-		ArrayList<User> candidates = new ArrayList<User>();
-		return candidates;
+		return seedList;
 	}
 	
 	private boolean isGoodSeed(User user) {
@@ -69,4 +45,19 @@ public class SeedSeeker {
 			return false;
 		return true;
 	}
+	
+//	/**
+//	 * Get seed candidates from the following site:
+//	 * <a href="http://selfintro.xguru.net/">http://selfintro.xguru.net/</a>
+//	 * @return seed-candidate user list
+//	 */
+//	public ArrayList<User> getSeedCandidatesFromSelfIntro() {
+//		ArrayList<Status> searchResult = engine.searchTweets("#self_intro", 5000);
+//		ArrayList<User> candidates = new ArrayList<User>();
+//		for (Status tweet : searchResult) {
+//			if (candidates.contains(tweet.getUser()) == false)
+//				candidates.add(tweet.getUser());
+//		}
+//		return candidates;
+//	}
 }
