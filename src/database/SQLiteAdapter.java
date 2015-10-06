@@ -32,8 +32,12 @@ public class SQLiteAdapter extends DBAdapter {
 	private final String DATABASE_BACKUP;
 	
 	public SQLiteAdapter() {
+		this("../Data/TwitterData/TwitterData.sqlite");
+	}
+	
+	public SQLiteAdapter(String dbPath) {
 		// Connection information
-		DATABASE_PATH	= "../Data/TwitterData/TwitterData.sqlite";
+		DATABASE_PATH	= dbPath;
 		CONNECTION_URL	= "jdbc:sqlite:" + DATABASE_PATH;
 		DATABASE_BACKUP	= DATABASE_PATH + ".backup";
 		USER_ID			= null;
